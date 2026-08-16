@@ -103,3 +103,31 @@ export const activityApi = {
   getSessionActivities: (sessionId: string) =>
     request<Activity[]>(`/sessions/${sessionId}/activities`),
 };
+
+// V3 Resume Context types
+export interface ResumeContext {
+  lastWorked: {
+    timestamp: string | null;
+    relativeText: string;
+  };
+  workingOn: string;
+  files: {
+    path: string;
+    status?: string;
+  }[];
+  lastCommit: CommitInfo | null;
+  pending: string[];
+  changesSinceLastSession: {
+    commitsCount: number;
+    modifiedFilesCount: number;
+    branchChanged: boolean;
+    lastSessionBranch?: string;
+    currentBranch?: string;
+  };
+}
+
+// Resume API
+export const resumeApi = {
+  get: (repoId: string) => request<ResumeContext>(`/repos/${repoId}/resume`),
+};
+

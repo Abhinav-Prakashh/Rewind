@@ -81,22 +81,63 @@ export class GitService {
    * Gets the current git status including changed files
    */
   async getStatus(): Promise<GitStatus> {
-    const status = await this.git.status();
-    const branch = await this.getCurrentBranch();
+    try {
+      const status = await this.git.status();
+      const branch = await this.getCurrentBranch();
 
-    const changedFiles = [
-      ...status.modified.map((f) => ({ path: f, status: 'modified' })),
-      ...status.not_added.map((f) => ({ path: f, status: 'untracked' })),
-      ...status.created.map((f) => ({ path: f, status: 'added' })),
-      ...status.deleted.map((f) => ({ path: f, status: 'deleted' })),
-      ...status.renamed.map((f) => ({ path: f.to ?? f.from, status: 'renamed' })),
-    ];
+      const changedFiles = [
+        ...status.modified.map((f) => ({ path: f, status: 'modified' })),
+        ...status.not_added.map((f) => ({ path: f, status: 'untracked' })),
+        ...status.created.map((f) => ({ path: f, status: 'added' })),
+        ...status.deleted.map((f) => ({ path: f, status: 'deleted' })),
+        ...status.renamed.map((f) => ({ path: f.to ?? f.from, status: 'renamed' })),
+      ];
 
-    return {
-      branch,
-      changedFiles,
-      ahead: status.ahead,
-      behind: status.behind,
-    };
+      return {
+        branch,
+        changedFiles,
+        ahead: status.ahead,
+        behind: status.behind,
+      };
+    } catch {
+      return {
+        branch: 'unknown',
+        changedFiles: [],
+        ahead: 0,
+        behind: 0,
+      };
+    }
+  }
+
+  /**
+   * Gets commits created since a specific date
+   */
+  async getCommitsSince(sinceDate: string | Date): Promise<CommitInfo[]> {
+    try {
+      const sinceISO = typeof sinceDate === 'string' ? sinceDate : new Date(sinceDate).toISOString();
+      const log = await this.git.log({ '--since': sinceISO });
+      return log.all.map((commit) => ({
+        hash: commit.hash.substring(0, 7),
+        message: commit.message,
+        author: commit.author_name,
+        date: commit.date,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Gets list of local branches
+   */
+  async getLocalBranches(): Promise<string[]> {
+    try {
+      const branchSummary = await this.git.branchLocal();
+      return branchSummary.all;
+    } catch {
+      return [];
+    }
   }
 }
+
+

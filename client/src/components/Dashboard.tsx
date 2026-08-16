@@ -1,6 +1,6 @@
 import type { Repository } from '../lib/api';
-import { useSessions, useGitInfo, useActivities } from '../hooks/useApi';
-import { ResumeCard } from './ResumeCard';
+import { useSessions, useGitInfo, useActivities, useResumeContext } from '../hooks/useApi';
+import { ResumeEngine } from './ResumeEngine';
 import { SessionPanel } from './SessionPanel';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
@@ -14,17 +14,18 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
   const { sessions, activeSession, startSession, endSession, updateNotes } = useSessions(repo.id);
   const { status, commits, loading: gitLoading, refresh: refreshGit } = useGitInfo(repo.id);
   const { activities, loading: activitiesLoading } = useActivities(repo.id);
-
-  const lastCompletedSession = sessions.find((s) => s.status === 'completed') || null;
+  const { context: resumeContext, loading: loadingResumeContext, refresh: refreshResume } = useResumeContext(repo.id);
 
   const handleResume = async () => {
     await startSession();
     refreshGit();
+    refreshResume();
   };
 
   const handleEndSession = async () => {
     await endSession();
     refreshGit();
+    refreshResume();
   };
 
   return (
@@ -55,17 +56,19 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Resume Card */}
+        {/* V3 Resume Work Engine */}
         <div className="mb-8">
-          <ResumeCard
+          <ResumeEngine
             repoName={repo.name}
             branch={repo.branch || status?.branch || 'main'}
-            lastSession={lastCompletedSession}
             activeSession={activeSession}
+            resumeContext={resumeContext}
+            loadingContext={loadingResumeContext}
             onResume={handleResume}
             onEndSession={handleEndSession}
           />
         </div>
+
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

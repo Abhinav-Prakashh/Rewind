@@ -6,6 +6,7 @@ import repoRoutes from './routes/repo.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import gitRoutes from './routes/git.routes.js';
 import activityRoutes from './routes/activity.routes.js';
+import resumeRoutes from './routes/resume.routes.js';
 import { WatcherService } from './services/watcher.service.js';
 import { RowDataPacket } from 'mysql2';
 
@@ -23,6 +24,8 @@ app.use('/api/repos', repoRoutes);
 app.use('/api', sessionRoutes);
 app.use('/api/repos', gitRoutes);
 app.use('/api', activityRoutes);
+app.use('/api', resumeRoutes);
+
 
 // Health check
 app.get('/api/health', (_req, res) => {

@@ -201,3 +201,29 @@ export function useActivities(repoId: string | undefined) {
 
   return { activities, loading, refresh: fetchActivities };
 }
+
+// ─── Resume Context Hook (V3) ──────────────────────────────────
+export function useResumeContext(repoId: string | undefined) {
+  const [context, setContext] = useState<import('../lib/api').ResumeContext | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchResumeContext = useCallback(async () => {
+    if (!repoId) return;
+    try {
+      setLoading(true);
+      const data = await (await import('../lib/api')).resumeApi.get(repoId);
+      setContext(data);
+    } catch (err) {
+      console.error('Failed to fetch resume context:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [repoId]);
+
+  useEffect(() => {
+    fetchResumeContext();
+  }, [fetchResumeContext]);
+
+  return { context, loading, refresh: fetchResumeContext };
+}
+
