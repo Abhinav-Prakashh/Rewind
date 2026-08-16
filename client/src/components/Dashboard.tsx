@@ -1,8 +1,9 @@
 import type { Repository } from '../lib/api';
-import { useSessions, useGitInfo } from '../hooks/useApi';
+import { useSessions, useGitInfo, useActivities } from '../hooks/useApi';
 import { ResumeCard } from './ResumeCard';
 import { SessionPanel } from './SessionPanel';
 import { GitInfo } from './GitInfo';
+import { ActivityTimeline } from './ActivityTimeline';
 
 interface DashboardProps {
   repo: Repository;
@@ -12,6 +13,7 @@ interface DashboardProps {
 export function Dashboard({ repo, onDisconnect }: DashboardProps) {
   const { sessions, activeSession, startSession, endSession, updateNotes } = useSessions(repo.id);
   const { status, commits, loading: gitLoading, refresh: refreshGit } = useGitInfo(repo.id);
+  const { activities, loading: activitiesLoading } = useActivities(repo.id);
 
   const lastCompletedSession = sessions.find((s) => s.status === 'completed') || null;
 
@@ -67,8 +69,9 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left Column — Git Info */}
-          <div className="lg:col-span-3">
+          {/* Left Column — Activity Stream & Git Info */}
+          <div className="lg:col-span-3 space-y-6">
+            <ActivityTimeline activities={activities} loading={activitiesLoading} />
             <GitInfo status={status} commits={commits} loading={gitLoading} />
           </div>
 

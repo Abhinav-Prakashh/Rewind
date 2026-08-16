@@ -3,12 +3,14 @@ import {
   repoApi,
   sessionApi,
   gitApi,
+  activityApi,
 } from '../lib/api';
 import type {
   Repository,
   Session,
   CommitInfo,
   GitStatus,
+  Activity,
 } from '../lib/api';
 
 // ─── Repository Hook ─────────────────────────────────────────
@@ -172,4 +174,30 @@ export function useGitInfo(repoId: string | undefined) {
   }, [fetchGitInfo]);
 
   return { status, commits, loading, refresh: fetchGitInfo };
+}
+
+// ─── Activity Hook ───────────────────────────────────────────
+export function useActivities(repoId: string | undefined) {
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchActivities = useCallback(async () => {
+    if (!repoId) return;
+    try {
+      const data = await activityApi.list(repoId, 50);
+      setActivities(data);
+    } catch (err) {
+      console.error('Failed to fetch activities:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [repoId]);
+
+  useEffect(() => {
+    fetchActivities();
+    const interval = setInterval(fetchActivities, 3000);
+    return () => clearInterval(interval);
+  }, [fetchActivities]);
+
+  return { activities, loading, refresh: fetchActivities };
 }

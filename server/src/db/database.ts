@@ -50,6 +50,19 @@ export async function initializeDatabase(): Promise<void> {
     )
   `);
 
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS activities (
+      id VARCHAR(36) PRIMARY KEY,
+      repo_id VARCHAR(36) NOT NULL,
+      session_id VARCHAR(36) NULL,
+      type VARCHAR(50) NOT NULL,
+      file_path TEXT NULL,
+      details TEXT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (repo_id) REFERENCES repositories(id) ON DELETE CASCADE
+    )
+  `);
+
   console.log('✅ Database initialized successfully');
 }
 

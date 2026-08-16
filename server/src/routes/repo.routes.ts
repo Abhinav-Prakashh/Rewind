@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
+import { WatcherService } from '../services/watcher.service.js';
 import { RowDataPacket } from 'mysql2';
 
 const router = Router();
@@ -39,6 +40,9 @@ router.post('/', async (req: Request, res: Response) => {
       'INSERT INTO repositories (id, name, path) VALUES (?, ?, ?)',
       [id, name, repoPath]
     );
+
+    // Start watching repository
+    WatcherService.startWatching(id, repoPath).catch(() => {});
 
     const gitService = new GitService(repoPath);
     const branch = await gitService.getCurrentBranch();
@@ -100,6 +104,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
       res.status(404).json({ error: 'Repository not found' });
       return;
     }
+
+    // Stop watching repository
+    WatcherService.stopWatching(req.params.id as string).catch(() => {});
 
     res.json({ message: 'Repository disconnected' });
   } catch (error) {

@@ -77,10 +77,29 @@ export const sessionApi = {
     }),
 };
 
+// Activity types
+export interface Activity {
+  id: string;
+  repo_id: string;
+  session_id: string | null;
+  type: 'file_modified' | 'file_created' | 'file_deleted' | 'branch_changed' | 'commit_created';
+  file_path: string | null;
+  details: string | null;
+  timestamp: string;
+}
+
 // Git API
 export const gitApi = {
   status: (repoId: string) => request<GitStatus>(`/repos/${repoId}/git/status`),
   commits: (repoId: string, count = 10) =>
     request<CommitInfo[]>(`/repos/${repoId}/git/commits?count=${count}`),
   branch: (repoId: string) => request<{ branch: string }>(`/repos/${repoId}/git/branch`),
+};
+
+// Activity API
+export const activityApi = {
+  list: (repoId: string, limit = 50) =>
+    request<Activity[]>(`/repos/${repoId}/activities?limit=${limit}`),
+  getSessionActivities: (sessionId: string) =>
+    request<Activity[]>(`/sessions/${sessionId}/activities`),
 };
