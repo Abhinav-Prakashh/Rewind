@@ -46,7 +46,3 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
-
-# Specification docs
-Developer Memory System.md
-
