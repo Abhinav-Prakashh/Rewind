@@ -2,6 +2,7 @@ import type { Repository } from '../lib/api';
 import { useSessions, useGitInfo, useActivities, useResumeContext, useTimeline } from '../hooks/useApi';
 import { ResumeEngine } from './ResumeEngine';
 import { ProjectTimeline } from './ProjectTimeline';
+import { AIMemoryChat } from './AIMemoryChat';
 import { SessionPanel } from './SessionPanel';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
@@ -73,6 +74,11 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
           />
         </div>
 
+        {/* V5 AI Memory Layer */}
+        <div>
+          <AIMemoryChat repoId={repo.id} repoName={repo.name} />
+        </div>
+
         {/* V4 Visual Project Timeline */}
         <div>
           <ProjectTimeline timeline={timeline} loading={timelineLoading} />
@@ -99,4 +105,5 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
     </div>
   );
 }
+
 

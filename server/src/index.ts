@@ -8,6 +8,7 @@ import gitRoutes from './routes/git.routes.js';
 import activityRoutes from './routes/activity.routes.js';
 import resumeRoutes from './routes/resume.routes.js';
 import timelineRoutes from './routes/timeline.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 import { WatcherService } from './services/watcher.service.js';
 import { RowDataPacket } from 'mysql2';
 
@@ -27,6 +28,8 @@ app.use('/api/repos', gitRoutes);
 app.use('/api', activityRoutes);
 app.use('/api', resumeRoutes);
 app.use('/api', timelineRoutes);
+app.use('/api', aiRoutes);
+
 
 
 

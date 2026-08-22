@@ -152,4 +152,33 @@ export const timelineApi = {
   get: (repoId: string) => request<TimelineEvent[]>(`/repos/${repoId}/timeline`),
 };
 
+// V5 AI Memory Layer types
+export interface MemorySource {
+  type: 'session' | 'commit' | 'file' | 'note';
+  label: string;
+  detail?: string;
+  timestamp?: string;
+}
+
+export interface AIQueryResult {
+  answer: string;
+  sources: MemorySource[];
+}
+
+export interface AISuggestionsResult {
+  suggestions: string[];
+}
+
+// AI API
+export const aiApi = {
+  query: (repoId: string, query: string) =>
+    request<AIQueryResult>(`/repos/${repoId}/ai/query`, {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
+  getSuggestions: (repoId: string) =>
+    request<AISuggestionsResult>(`/repos/${repoId}/ai/suggestions`),
+};
+
+
 
