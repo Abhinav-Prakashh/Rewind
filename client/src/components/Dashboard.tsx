@@ -1,8 +1,16 @@
 import type { Repository } from '../lib/api';
-import { useSessions, useGitInfo, useActivities, useResumeContext, useTimeline } from '../hooks/useApi';
+import {
+  useSessions,
+  useGitInfo,
+  useActivities,
+  useResumeContext,
+  useTimeline,
+  useDecisions,
+} from '../hooks/useApi';
 import { ResumeEngine } from './ResumeEngine';
-import { ProjectTimeline } from './ProjectTimeline';
+import { DecisionMemory } from './DecisionMemory';
 import { AIMemoryChat } from './AIMemoryChat';
+import { ProjectTimeline } from './ProjectTimeline';
 import { SessionPanel } from './SessionPanel';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
@@ -18,6 +26,12 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
   const { activities, loading: activitiesLoading } = useActivities(repo.id);
   const { context: resumeContext, loading: loadingResumeContext, refresh: refreshResume } = useResumeContext(repo.id);
   const { timeline, loading: timelineLoading, refresh: refreshTimeline } = useTimeline(repo.id);
+  const {
+    decisions,
+    loading: decisionsLoading,
+    createDecision,
+    deleteDecision,
+  } = useDecisions(repo.id);
 
   const handleResume = async () => {
     await startSession();
@@ -79,6 +93,16 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
           <AIMemoryChat repoId={repo.id} repoName={repo.name} />
         </div>
 
+        {/* V8 Decision Memory */}
+        <div>
+          <DecisionMemory
+            decisions={decisions}
+            loading={decisionsLoading}
+            onCreateDecision={createDecision}
+            onDeleteDecision={deleteDecision}
+          />
+        </div>
+
         {/* V4 Visual Project Timeline */}
         <div>
           <ProjectTimeline timeline={timeline} loading={timelineLoading} />
@@ -105,5 +129,6 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
     </div>
   );
 }
+
 
 

@@ -154,7 +154,7 @@ export const timelineApi = {
 
 // V5 AI Memory Layer types
 export interface MemorySource {
-  type: 'session' | 'commit' | 'file' | 'note';
+  type: 'session' | 'commit' | 'file' | 'note' | 'decision';
   label: string;
   detail?: string;
   timestamp?: string;
@@ -179,6 +179,48 @@ export const aiApi = {
   getSuggestions: (repoId: string) =>
     request<AISuggestionsResult>(`/repos/${repoId}/ai/suggestions`),
 };
+
+// V8 Decision Memory types
+export interface Decision {
+  id: string;
+  repo_id: string;
+  title: string;
+  context: string | null;
+  decision: string;
+  reason: string;
+  status: 'proposed' | 'accepted' | 'superseded' | 'deprecated';
+  tags: string | null;
+  created_at: string;
+}
+
+export interface CreateDecisionInput {
+  title: string;
+  context?: string;
+  decision: string;
+  reason: string;
+  status?: 'proposed' | 'accepted' | 'superseded' | 'deprecated';
+  tags?: string;
+}
+
+// Decision API
+export const decisionApi = {
+  list: (repoId: string) => request<Decision[]>(`/repos/${repoId}/decisions`),
+  create: (repoId: string, input: CreateDecisionInput) =>
+    request<Decision>(`/repos/${repoId}/decisions`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  update: (id: string, input: Partial<CreateDecisionInput>) =>
+    request<Decision>(`/decisions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/decisions/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 
 
 

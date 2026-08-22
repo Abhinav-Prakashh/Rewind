@@ -1,9 +1,10 @@
 import pool from '../db/database.js';
 import { GitService, CommitInfo } from './git.service.js';
 import { RowDataPacket } from 'mysql2';
+import { GoogleGenAI } from '@google/genai';
 
 export interface MemorySource {
-  type: 'session' | 'commit' | 'file' | 'note';
+  type: 'session' | 'commit' | 'file' | 'note' | 'decision';
   label: string;
   detail?: string;
   timestamp?: string;
@@ -46,22 +47,28 @@ export class AIMemoryService {
       [repoId]
     );
 
-    // 4. Fetch Git Commits & Status
+    // 4. Fetch Decisions (V8)
+    const [decisions] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM decisions WHERE repo_id = ? ORDER BY created_at DESC',
+      [repoId]
+    );
+
+    // 5. Fetch Git Commits & Status
     const commits = await gitService.getRecentCommits(30);
     const gitStatus = await gitService.getStatus();
 
     const sources: MemorySource[] = [];
 
-    // 5. External LLM Integration (Google Gemini or OpenAI)
+    // 6. External LLM Integration (Google Gemini or OpenAI)
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (geminiKey) {
       try {
-        const promptContext = this.buildContextString(repo.name, sessions, commits, activities, gitStatus);
+        const promptContext = this.buildContextString(repo.name, sessions, commits, activities, gitStatus, decisions);
         const geminiAnswer = await this.callGeminiAPI(geminiKey, promptContext, userQuery);
         if (geminiAnswer) {
-          const matchedSources = this.extractRelevantSources(queryLower, sessions, commits, activities);
+          const matchedSources = this.extractRelevantSources(queryLower, sessions, commits, activities, decisions);
           return { answer: geminiAnswer, sources: matchedSources };
         }
       } catch (err) {
@@ -69,10 +76,10 @@ export class AIMemoryService {
       }
     } else if (openaiKey) {
       try {
-        const promptContext = this.buildContextString(repo.name, sessions, commits, activities, gitStatus);
+        const promptContext = this.buildContextString(repo.name, sessions, commits, activities, gitStatus, decisions);
         const llmAnswer = await this.callOpenAI(openaiKey, promptContext, userQuery);
         if (llmAnswer) {
-          const matchedSources = this.extractRelevantSources(queryLower, sessions, commits, activities);
+          const matchedSources = this.extractRelevantSources(queryLower, sessions, commits, activities, decisions);
           return { answer: llmAnswer, sources: matchedSources };
         }
       } catch (err) {
@@ -81,7 +88,7 @@ export class AIMemoryService {
     }
 
     // Built-in Local-first Intelligent Memory Reasoning Engine
-    return this.generateLocalMemoryAnswer(queryLower, repo.name, sessions, commits, activities, gitStatus);
+    return this.generateLocalMemoryAnswer(queryLower, repo.name, sessions, commits, activities, gitStatus, decisions);
   }
 
   /**
@@ -92,9 +99,10 @@ export class AIMemoryService {
     sessions: RowDataPacket[],
     commits: CommitInfo[],
     activities: RowDataPacket[],
-    gitStatus: { branch: string; changedFiles: { path: string; status: string }[] }
+    gitStatus: { branch: string; changedFiles: { path: string; status: string }[] },
+    decisions: RowDataPacket[] = []
   ): string {
-    return `Project: ${repoName}
+    let context = `Project: ${repoName}
 Active Branch: ${gitStatus.branch}
 Recent Commits:
 ${commits.slice(0, 15).map((c) => `- [${c.hash}] ${c.message} (by ${c.author} on ${c.date})`).join('\n')}
@@ -104,50 +112,53 @@ ${sessions.slice(0, 8).map((s) => `- Session (${s.start_time} - ${s.end_time || 
 
 Recently Modified Files:
 ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
-  }
 
-  /**
-   * Calls Google Gemini API (gemini-2.0-flash / gemini-1.5-flash)
-   */
-  private static async callGeminiAPI(apiKey: string, context: string, query: string): Promise<string | null> {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [
-            {
-              text: 'You are the Developer Memory System AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Be concise, use markdown bullet points, and cite specific commit hashes, branch names, and file names.',
-            },
-          ],
-        },
-        contents: [
-          {
-            parts: [
-              {
-                text: `Repository Memory Context:\n${context}\n\nDeveloper Question: ${query}`,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 1000,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      console.error(`Gemini API error: ${response.status} ${response.statusText}`);
-      return null;
+    if (decisions.length > 0) {
+      context += `\n\nArchitecture Decisions (Decision Memory):\n${decisions
+        .map((d) => `- [${d.status.toUpperCase()}] ${d.title}: Decision: "${d.decision}" | Reason: "${d.reason}" (Date: ${d.created_at})`)
+        .join('\n')}`;
     }
 
-    const data = (await response.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    return context;
   }
+
+
+  /**
+   * Calls Google Gemini API using Google Gen AI SDK (gemini-3.6-flash / gemini-3.1-pro-preview)
+   */
+  private static async callGeminiAPI(apiKey: string, context: string, query: string): Promise<string | null> {
+    const modelsToTry = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: `Repository Memory Context:\n${context}\n\nDeveloper Question: ${query}`,
+          config: {
+            systemInstruction:
+              'You are the Developer Memory System AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Be concise, use markdown bullet points, and cite specific commit hashes, branch names, and file names.',
+            temperature: 0.2,
+          },
+        });
+
+        const text = response.text;
+        if (text) {
+          console.log(`✅ Successfully generated AI memory response using Gemini (${modelName})`);
+          return text;
+        }
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`Gemini attempt with ${modelName} returned:`, errorMsg);
+      }
+    }
+
+    return null;
+  }
+
+
+
 
   /**
    * Calls OpenAI API if configured
@@ -189,9 +200,26 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
     query: string,
     sessions: RowDataPacket[],
     commits: CommitInfo[],
-    activities: RowDataPacket[]
+    activities: RowDataPacket[],
+    decisions: RowDataPacket[] = []
   ): MemorySource[] {
     const sources: MemorySource[] = [];
+
+    // Decisions matching keywords
+    decisions.forEach((d) => {
+      if (
+        query.includes(d.title.toLowerCase()) ||
+        query.includes(d.decision.toLowerCase()) ||
+        query.includes(d.reason.toLowerCase())
+      ) {
+        sources.push({
+          type: 'decision',
+          label: `Decision: ${d.title}`,
+          detail: d.reason,
+          timestamp: d.created_at,
+        });
+      }
+    });
 
     // Commits matching keywords
     commits.slice(0, 3).forEach((c) => {
@@ -225,7 +253,8 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
     sessions: RowDataPacket[],
     commits: CommitInfo[],
     activities: RowDataPacket[],
-    gitStatus: { branch: string; changedFiles: { path: string; status: string }[] }
+    gitStatus: { branch: string; changedFiles: { path: string; status: string }[] },
+    decisions: RowDataPacket[] = []
   ): AIQueryResult {
     const sources: MemorySource[] = [];
 
@@ -373,9 +402,22 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
       return { answer, sources };
     }
 
-    // Case 4: "Why was [X] created?" / "Reason for..."
-    if (query.includes('why') || query.includes('reason') || query.includes('purpose')) {
-      const topic = query.replace(/why was|why is|what is the reason for|created|built/g, '').replace(/[?]/g, '').trim();
+    // Case 4: "Why was [X] created?" / "Reason for..." / "Decisions..."
+    if (
+      query.includes('why') ||
+      query.includes('reason') ||
+      query.includes('purpose') ||
+      query.includes('decision')
+    ) {
+      const topic = query.replace(/why was|why is|what is the reason for|created|built|decision on|decisions for/g, '').replace(/[?]/g, '').trim();
+
+      const matchingDecisions = decisions.filter(
+        (d) =>
+          d.title.toLowerCase().includes(topic) ||
+          d.decision.toLowerCase().includes(topic) ||
+          d.reason.toLowerCase().includes(topic) ||
+          (d.tags && d.tags.toLowerCase().includes(topic))
+      );
 
       const matchingNotes: string[] = [];
       const matchingCommits: CommitInfo[] = [];
@@ -404,7 +446,20 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
         }
       });
 
-      let answer = `Context regarding **"${topic || 'this item'}"**:\n\n`;
+      let answer = `Context regarding **"${topic || 'this item'}"** in **${repoName}**:\n\n`;
+
+      if (matchingDecisions.length > 0) {
+        answer += `• **From Decision Memory (ADRs)**:\n`;
+        matchingDecisions.forEach((d) => {
+          sources.push({
+            type: 'decision',
+            label: `Decision: ${d.title}`,
+            detail: d.reason,
+            timestamp: d.created_at,
+          });
+          answer += `  - **${d.title}** (\`${d.status}\`): "${d.decision}"\n    *Reason:* ${d.reason}\n`;
+        });
+      }
 
       if (matchingNotes.length > 0) {
         answer += `• **From Session Notes**:\n`;
@@ -420,12 +475,13 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
         });
       }
 
-      if (matchingNotes.length === 0 && matchingCommits.length === 0) {
-        answer += `No explicit decision notes were recorded for "${topic}". Recent related session activity was logged under branch \`${gitStatus.branch}\` with last commit *"${commits[0]?.message || 'None'}"*.\n`;
+      if (matchingDecisions.length === 0 && matchingNotes.length === 0 && matchingCommits.length === 0) {
+        answer += `No explicit decision records or notes were found for "${topic}". Recent session activity was logged under branch \`${gitStatus.branch}\` with last commit *"${commits[0]?.message || 'None'}"*.\n`;
       }
 
       return { answer, sources };
     }
+
 
     // General fallback
     let answer = `Here is a memory summary for **${repoName}**:\n\n`;

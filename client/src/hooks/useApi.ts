@@ -249,8 +249,62 @@ export function useTimeline(repoId: string | undefined) {
     fetchTimeline();
   }, [fetchTimeline]);
 
-  return { timeline, loading, refresh: fetchTimeline };
+// ─── Decision Hook (V8) ────────────────────────────────────────
+export function useDecisions(repoId: string | undefined) {
+  const [decisions, setDecisions] = useState<import('../lib/api').Decision[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDecisions = useCallback(async () => {
+    if (!repoId) return;
+    try {
+      setLoading(true);
+      const data = await (await import('../lib/api')).decisionApi.list(repoId);
+      setDecisions(data);
+    } catch (err) {
+      console.error('Failed to fetch decisions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [repoId]);
+
+  const createDecision = useCallback(
+    async (input: import('../lib/api').CreateDecisionInput) => {
+      if (!repoId) return;
+      const created = await (await import('../lib/api')).decisionApi.create(repoId, input);
+      setDecisions((prev) => [created, ...prev]);
+      return created;
+    },
+    [repoId]
+  );
+
+  const updateDecision = useCallback(
+    async (id: string, input: Partial<import('../lib/api').CreateDecisionInput>) => {
+      const updated = await (await import('../lib/api')).decisionApi.update(id, input);
+      setDecisions((prev) => prev.map((d) => (d.id === id ? updated : d)));
+      return updated;
+    },
+    []
+  );
+
+  const deleteDecision = useCallback(async (id: string) => {
+    await (await import('../lib/api')).decisionApi.delete(id);
+    setDecisions((prev) => prev.filter((d) => d.id !== id));
+  }, []);
+
+  useEffect(() => {
+    fetchDecisions();
+  }, [fetchDecisions]);
+
+  return {
+    decisions,
+    loading,
+    createDecision,
+    updateDecision,
+    deleteDecision,
+    refresh: fetchDecisions,
+  };
 }
+
 
 
 

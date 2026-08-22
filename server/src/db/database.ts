@@ -63,7 +63,23 @@ export async function initializeDatabase(): Promise<void> {
     )
   `);
 
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS decisions (
+      id VARCHAR(36) PRIMARY KEY,
+      repo_id VARCHAR(36) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      context TEXT NULL,
+      decision TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      status ENUM('proposed', 'accepted', 'superseded', 'deprecated') DEFAULT 'accepted',
+      tags VARCHAR(255) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (repo_id) REFERENCES repositories(id) ON DELETE CASCADE
+    )
+  `);
+
   console.log('✅ Database initialized successfully');
+
 }
 
 export default pool;
