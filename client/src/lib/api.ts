@@ -131,3 +131,25 @@ export const resumeApi = {
   get: (repoId: string) => request<ResumeContext>(`/repos/${repoId}/resume`),
 };
 
+// V4 Timeline types
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  type: 'session' | 'commit_cluster' | 'repository_init';
+  branch: string;
+  startTime: string;
+  endTime: string | null;
+  notes: string | null;
+  commits: CommitInfo[];
+  files: {
+    path: string;
+    status?: string;
+  }[];
+}
+
+// Timeline API
+export const timelineApi = {
+  get: (repoId: string) => request<TimelineEvent[]>(`/repos/${repoId}/timeline`),
+};
+
+

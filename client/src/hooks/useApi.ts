@@ -227,3 +227,30 @@ export function useResumeContext(repoId: string | undefined) {
   return { context, loading, refresh: fetchResumeContext };
 }
 
+// ─── Timeline Hook (V4) ────────────────────────────────────────
+export function useTimeline(repoId: string | undefined) {
+  const [timeline, setTimeline] = useState<import('../lib/api').TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTimeline = useCallback(async () => {
+    if (!repoId) return;
+    try {
+      setLoading(true);
+      const data = await (await import('../lib/api')).timelineApi.get(repoId);
+      setTimeline(data);
+    } catch (err) {
+      console.error('Failed to fetch timeline:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [repoId]);
+
+  useEffect(() => {
+    fetchTimeline();
+  }, [fetchTimeline]);
+
+  return { timeline, loading, refresh: fetchTimeline };
+}
+
+
+
