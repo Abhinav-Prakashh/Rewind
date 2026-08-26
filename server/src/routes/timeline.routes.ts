@@ -69,20 +69,24 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
       startTime: repo.created_at,
       endTime: repo.created_at,
       notes: `Repository ${repo.name} connected to Developer Memory System.`,
-      commits: recentCommits.slice(-1), // earliest recorded commit if available
+      commits: recentCommits.slice(-1),
       files: [],
     });
+
+    const coveredCommitHashes = new Set<string>();
 
     // 2. Map Sessions to Timeline Events
     for (const session of sessions) {
       const sessionStart = new Date(session.start_time).getTime();
       const sessionEnd = session.end_time ? new Date(session.end_time).getTime() : Date.now();
 
-      // Filter commits during session timeframe
+      // Filter commits during session timeframe (window around session start/end)
       const sessionCommits = recentCommits.filter((c) => {
         const commitTime = new Date(c.date).getTime();
         return commitTime >= sessionStart - 300000 && commitTime <= sessionEnd + 300000;
       });
+
+      sessionCommits.forEach((c) => coveredCommitHashes.add(c.hash));
 
       // Filter activities during session
       const sessionActivities = activities.filter((a) => a.session_id === session.id);
@@ -94,11 +98,14 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
         }
       });
 
-      // Deriving title
+      // Deriving title: If user named the session (in notes), use that name!
+      // Otherwise fall back to commit message or branch name.
       let title = `Session on ${session.branch || 'main'}`;
       if (session.notes && session.notes.trim()) {
         const firstLine = session.notes.trim().split('\n')[0].replace(/^[-*#\s]+/, '');
-        if (firstLine) title = firstLine;
+        if (firstLine) {
+          title = firstLine;
+        }
       } else if (sessionCommits.length > 0) {
         title = sessionCommits[0].message;
       }
@@ -110,27 +117,30 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
         branch: session.branch || 'main',
         startTime: session.start_time,
         endTime: session.end_time,
-        notes: session.notes || null,
+        notes: session.notes?.trim() || null,
         commits: sessionCommits,
         files: Array.from(filesMap.entries()).map(([path, status]) => ({ path, status })),
       });
     }
 
-    // 3. If no sessions exist yet, create a default "Recent Activity & Git History" event
-    if (sessions.length === 0 && recentCommits.length > 0) {
-      const latestCommit = recentCommits[0];
+    // 3. Add commits that occurred outside of tracked sessions as standalone milestones
+    const orphanCommits = recentCommits.filter((c) => !coveredCommitHashes.has(c.hash));
+    for (const commit of orphanCommits) {
       timelineEvents.push({
-        id: `recent-commits-${repo.id}`,
-        title: latestCommit.message || 'Recent Commits Work',
+        id: `commit-${commit.hash}`,
+        title: commit.message || 'Git Commit',
         type: 'commit_cluster',
         branch: gitStatus.branch || 'main',
-        startTime: latestCommit.date,
-        endTime: latestCommit.date,
-        notes: 'Git commits recorded prior to explicit session tracking.',
-        commits: recentCommits.slice(0, 5),
-        files: gitStatus.changedFiles.map((f) => ({ path: f.path, status: f.status })),
+        startTime: commit.date,
+        endTime: commit.date,
+        notes: `Commit ${commit.hash.slice(0, 7)} by ${commit.author}`,
+        commits: [commit],
+        files: [],
       });
     }
+
+    // 4. Sort all timeline events chronologically (oldest to newest)
+    timelineEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     res.json(timelineEvents);
   } catch (error) {

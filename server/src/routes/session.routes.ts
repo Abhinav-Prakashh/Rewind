@@ -142,4 +142,28 @@ router.get('/repos/:repoId/sessions/active', async (req: Request, res: Response)
   }
 });
 
+
+// DELETE /api/sessions/:id — Delete a session
+router.delete('/sessions/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await pool.execute(
+      'DELETE FROM sessions WHERE id = ?',
+      [id]
+    );
+
+    const affectedRows = (result as { affectedRows: number }).affectedRows;
+    if (affectedRows === 0) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    res.json({ message: 'Session deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    res.status(500).json({ error: 'Failed to delete session' });
+  }
+});
+
 export default router;

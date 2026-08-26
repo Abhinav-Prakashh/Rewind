@@ -75,6 +75,8 @@ export const sessionApi = {
       method: 'PATCH',
       body: JSON.stringify({ notes }),
     }),
+  delete: (sessionId: string) =>
+    request<{ message: string }>(`/sessions/${sessionId}`, { method: 'DELETE' }),
 };
 
 // Activity types

@@ -26,6 +26,7 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Fetch suggestions from backend
@@ -36,8 +37,12 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
     }).catch(() => {});
   }, [repoId]);
 
+  // Scroll chat container (not the page) when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages, loading]);
 
   const handleSend = async (queryText: string) => {
@@ -140,7 +145,7 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
       )}
 
       {/* Messages Scroll Area */}
-      <div className="space-y-4 max-h-80 overflow-y-auto mb-4 pr-1">
+      <div ref={scrollContainerRef} className="space-y-4 max-h-80 overflow-y-auto mb-4 pr-1">
         {messages.map((msg) => (
           <div
             key={msg.id}

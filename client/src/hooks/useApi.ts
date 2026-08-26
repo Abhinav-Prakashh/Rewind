@@ -25,11 +25,7 @@ export function useRepo() {
       setLoading(true);
       const data = await repoApi.list();
       setRepos(data);
-      if (data.length > 0 && !activeRepo) {
-        // Auto-select first repo, fetch full details
-        const fullRepo = await repoApi.get(data[0].id);
-        setActiveRepo(fullRepo);
-      }
+      // Do NOT auto-select — always land on the repo selection screen
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch repos');
     } finally {
@@ -100,10 +96,17 @@ export function useSessions(repoId: string | undefined) {
     }
   }, [repoId]);
 
-  const startSession = useCallback(async () => {
+  const startSession = useCallback(async (notes?: string) => {
     if (!repoId) return;
     try {
       const session = await sessionApi.start(repoId);
+      // If notes (name) provided, update session immediately
+      if (notes) {
+        const updated = await sessionApi.updateNotes(session.id, notes);
+        setActiveSession(updated);
+        setSessions((prev) => [updated, ...prev]);
+        return updated;
+      }
       setActiveSession(session);
       setSessions((prev) => [session, ...prev]);
       return session;
@@ -126,6 +129,17 @@ export function useSessions(repoId: string | undefined) {
     }
   }, [activeSession]);
 
+  // Delete a session (remove from timeline)
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      await sessionApi.delete(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (activeSession?.id === sessionId) setActiveSession(null);
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+    }
+  }, [activeSession]);
+
   const updateNotes = useCallback(async (notes: string) => {
     if (!activeSession) return;
     try {
@@ -143,7 +157,7 @@ export function useSessions(repoId: string | undefined) {
     fetchSessions();
   }, [fetchSessions]);
 
-  return { sessions, activeSession, loading, startSession, endSession, updateNotes, refresh: fetchSessions };
+  return { sessions, activeSession, loading, startSession, endSession, updateNotes, deleteSession, refresh: fetchSessions };
 }
 
 // ─── Git Info Hook ────────────────────────────────────────────
@@ -248,6 +262,9 @@ export function useTimeline(repoId: string | undefined) {
   useEffect(() => {
     fetchTimeline();
   }, [fetchTimeline]);
+
+  return { timeline, loading, refresh: fetchTimeline };
+}
 
 // ─── Decision Hook (V8) ────────────────────────────────────────
 export function useDecisions(repoId: string | undefined) {

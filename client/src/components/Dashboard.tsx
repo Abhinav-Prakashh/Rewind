@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Repository } from '../lib/api';
 import {
   useSessions,
@@ -12,6 +13,7 @@ import { DecisionMemory } from './DecisionMemory';
 import { AIMemoryChat } from './AIMemoryChat';
 import { ProjectTimeline } from './ProjectTimeline';
 import { SessionPanel } from './SessionPanel';
+import { SessionModal } from './SessionModal';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
 
@@ -21,7 +23,8 @@ interface DashboardProps {
 }
 
 export function Dashboard({ repo, onDisconnect }: DashboardProps) {
-  const { sessions, activeSession, startSession, endSession, updateNotes } = useSessions(repo.id);
+  const [isSessionModalOpen, setSessionModalOpen] = useState(false);
+  const { sessions, activeSession, startSession, endSession, updateNotes, deleteSession } = useSessions(repo.id);
   const { status, commits, loading: gitLoading, refresh: refreshGit } = useGitInfo(repo.id);
   const { activities, loading: activitiesLoading } = useActivities(repo.id);
   const { context: resumeContext, loading: loadingResumeContext, refresh: refreshResume } = useResumeContext(repo.id);
@@ -33,17 +36,28 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
     deleteDecision,
   } = useDecisions(repo.id);
 
-  const handleResume = async () => {
-    await startSession();
+  const handleResume = () => {
+    // Open modal — recap of last session shown inside the modal
+    setSessionModalOpen(true);
+  };
+
+  const handleStartSession = async (name?: string) => {
+    await startSession(name);
     refreshGit();
     refreshResume();
     refreshTimeline();
+    setSessionModalOpen(false);
   };
 
   const handleEndSession = async () => {
     await endSession();
     refreshGit();
     refreshResume();
+    refreshTimeline();
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await deleteSession(sessionId);
     refreshTimeline();
   };
 
@@ -105,7 +119,7 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
 
         {/* V4 Visual Project Timeline */}
         <div>
-          <ProjectTimeline timeline={timeline} loading={timelineLoading} />
+          <ProjectTimeline timeline={timeline} loading={timelineLoading} deleteSession={handleDeleteSession} />
         </div>
 
         {/* Two Column Layout */}
@@ -126,6 +140,13 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
           </div>
         </div>
       </main>
+
+      <SessionModal
+        isOpen={isSessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+        onConfirm={handleStartSession}
+        lastSession={sessions.find((s) => s.status === 'completed') ?? null}
+      />
     </div>
   );
 }

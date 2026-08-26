@@ -81,14 +81,10 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
     const recentCommits = await gitService.getRecentCommits(10);
     const lastCommit: CommitInfo | null = recentCommits.length > 0 ? recentCommits[0] : null;
 
-    // 3. Working On Context
+    // 3. Working On Context — always derived from git commit, never session notes
+    // (session notes/name is shown separately in the session panel and timeline)
     let workingOn = 'General project updates';
-    if (referenceSession && referenceSession.notes && referenceSession.notes.trim()) {
-      const firstLine = referenceSession.notes.trim().split('\n')[0].replace(/^[-*#\s]+/, '');
-      if (firstLine) {
-        workingOn = firstLine;
-      }
-    } else if (lastCommit) {
+    if (lastCommit) {
       workingOn = lastCommit.message;
     }
 

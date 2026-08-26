@@ -3,7 +3,7 @@ import { ConnectRepo } from './components/ConnectRepo';
 import { Dashboard } from './components/Dashboard';
 
 function App() {
-  const { activeRepo, loading, error, connectRepo, disconnectRepo } = useRepo();
+  const { repos, activeRepo, loading, error, connectRepo, disconnectRepo, selectRepo } = useRepo();
 
   // Loading state
   if (loading) {
@@ -22,13 +22,15 @@ function App() {
     );
   }
 
-  // No repo connected — show connect form
+  // No repo selected — always show the repo selection / connect screen
   if (!activeRepo) {
     return (
       <ConnectRepo
+        repos={repos}
         onConnect={async (path) => {
           await connectRepo(path);
         }}
+        onSelect={selectRepo}
         error={error}
       />
     );
