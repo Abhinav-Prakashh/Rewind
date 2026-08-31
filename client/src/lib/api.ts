@@ -53,6 +53,10 @@ export interface GitStatus {
 export const repoApi = {
   list: () => request<Repository[]>('/repos'),
   get: (id: string) => request<Repository>(`/repos/${id}`),
+  browse: () =>
+    request<{ path: string | null; isValid?: boolean; cancelled?: boolean }>('/repos/browse', {
+      method: 'POST',
+    }),
   connect: (path: string) =>
     request<Repository>('/repos', {
       method: 'POST',

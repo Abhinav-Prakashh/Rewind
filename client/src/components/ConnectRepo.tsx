@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Repository } from '../lib/api';
+import { repoApi } from '../lib/api';
 
 interface ConnectRepoProps {
   onConnect: (path: string) => Promise<void>;
@@ -11,13 +12,13 @@ interface ConnectRepoProps {
 export function ConnectRepo({ onConnect, onSelect, repos, error }: ConnectRepoProps) {
   const [path, setPath] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  // Show form if no repos, or if user explicitly opens it
+  const [isBrowsing, setIsBrowsing] = useState(false);
   const [forceShowForm, setForceShowForm] = useState(false);
   const showNewForm = repos.length === 0 || forceShowForm;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!path.trim()) return;
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!path.trim() || isConnecting) return;
     setIsConnecting(true);
     try {
       await onConnect(path.trim());
@@ -26,127 +27,199 @@ export function ConnectRepo({ onConnect, onSelect, repos, error }: ConnectRepoPr
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative z-10">
-      <div className="w-full max-w-lg animate-fade-up">
+  const handleBrowseComputer = async () => {
+    try {
+      setIsBrowsing(true);
+      const res = await repoApi.browse();
+      if (res?.path && !res.cancelled) {
+        setPath(res.path);
+        // If user is currently showing list, open form to show the chosen path
+        setForceShowForm(true);
+      }
+    } catch (err) {
+      console.error('Failed to open native file browser:', err);
+    } finally {
+      setIsBrowsing(false);
+    }
+  };
 
-        {/* Brand */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-violet mb-5 shadow-lg shadow-accent-blue/20">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-            </svg>
+  return (
+    <div className="min-h-screen w-full bg-app-bg p-4 sm:p-8 flex items-center justify-center">
+      <div className="w-full max-w-xl animate-fade-up">
+        
+        {/* Brand & Editorial Title */}
+        <div className="mb-8 text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+            <div className="w-11 h-11 rounded-[14px] bg-ink text-white flex items-center justify-center shadow-xs">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted font-mono">
+              Recall Memory
+            </span>
           </div>
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Developer Memory</h1>
-          <p className="text-text-secondary text-base">Git remembers code. DMS remembers context.</p>
+
+          <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-ink leading-tight mb-2">
+            Pick Up Where<br />You Left Off
+          </h1>
+          <p className="text-sm text-muted">
+            Git remembers your code. Recall remembers your developer mental model.
+          </p>
         </div>
 
         {/* Previously connected repos */}
         {repos.length > 0 && (
-          <div className="glass-card p-6 mb-4">
-            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <svg className="w-4 h-4 text-accent-violet" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 3L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-              </svg>
-              Recent Repositories
-            </h2>
+          <div className="mb-6 bg-surface rounded-[24px] p-5 border border-border shadow-xs">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted font-mono">
+                Recent Workspaces
+              </span>
+              <span className="text-xs text-muted-light font-mono">
+                {repos.length} registered
+              </span>
+            </div>
+
             <div className="space-y-2">
               {repos.map((repo) => (
                 <button
                   key={repo.id}
                   onClick={() => onSelect(repo)}
-                  className="w-full text-left flex items-center gap-3 p-3 rounded-xl bg-navy-900/60 border border-glass-border/50 hover:border-accent-violet/40 hover:bg-navy-900 transition-all group"
+                  className="w-full text-left flex items-center justify-between p-3.5 rounded-[16px] bg-surface-raised border border-border hover:border-ink/25 hover:-translate-y-0.5 transition-all group cursor-pointer shadow-xs"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-accent-violet/10 border border-accent-violet/20 flex items-center justify-center shrink-0 group-hover:bg-accent-violet/20 transition-colors">
-                    <svg className="w-4 h-4 text-accent-violet" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-                    </svg>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-[10px] bg-surface flex items-center justify-center shrink-0 border border-border group-hover:bg-accent group-hover:text-accent-ink transition-colors">
+                      <svg className="w-4 h-4 text-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.45.015.9.034 1.35.056m0 0a17.93 17.93 0 0 1 13.8 0m-13.8 0V18a2.25 2.25 0 0 0 2.25 2.25h9.3A2.25 2.25 0 0 0 18.9 18V9.832m-13.8-.056A18.064 18.064 0 0 1 12 9c2.4 0 4.71.36 6.9.832M6.75 6.75a2.25 2.25 0 0 1 2.25-2.25h6a2.25 2.25 0 0 1 2.25 2.25v2.25H6.75V6.75Z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink truncate">{repo.name}</p>
+                      <p className="text-xs text-muted truncate font-mono">{repo.path}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-text-primary truncate">{repo.name}</p>
-                    <p className="text-xs text-text-muted truncate">{repo.path}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
+
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
                     {repo.branch && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20">
+                      <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-surface text-ink-soft border border-border">
                         {repo.branch}
                       </span>
                     )}
-                    <svg className="w-4 h-4 text-text-muted group-hover:text-accent-violet transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
+                    <span className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-muted group-hover:bg-ink group-hover:text-white transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </span>
                   </div>
                 </button>
               ))}
             </div>
 
-            <button
-              onClick={() => setForceShowForm((v) => !v)}
-              className="mt-4 w-full flex items-center justify-center gap-2 text-xs text-text-muted hover:text-accent-violet transition-colors py-2"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              {forceShowForm ? 'Hide' : 'Connect a new repository'}
-            </button>
+            <div className="mt-3 pt-3 border-t border-border/70 flex items-center justify-between gap-2">
+              <button
+                onClick={handleBrowseComputer}
+                disabled={isBrowsing}
+                className="flex items-center gap-1.5 text-xs text-ink font-medium hover:text-ink-soft bg-surface-raised border border-border px-3.5 py-2 rounded-[14px] transition-colors cursor-pointer"
+              >
+                <svg className="w-4 h-4 text-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                </svg>
+                <span>{isBrowsing ? 'Opening Picker...' : 'Browse on Computer'}</span>
+              </button>
+
+              <button
+                onClick={() => setForceShowForm((v) => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors py-2 font-medium cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span>{forceShowForm ? 'Hide manual path' : 'Manual path'}</span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Connect new form */}
         {showNewForm && (
-          <div className="glass-card p-8">
-            <h2 className="text-lg font-semibold text-text-primary mb-1">Connect Repository</h2>
-            <p className="text-sm text-text-muted mb-6">Enter the full path to a local Git repository.</p>
+          <div className="bg-surface-raised rounded-[24px] p-6 border border-border shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-ink uppercase tracking-wider font-mono">
+                Connect Repository
+              </h2>
+              <button
+                onClick={handleBrowseComputer}
+                disabled={isBrowsing}
+                type="button"
+                className="flex items-center gap-1.5 text-xs font-medium text-ink bg-surface border border-border hover:bg-surface-raised px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-xs"
+              >
+                <svg className="w-3.5 h-3.5 text-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                </svg>
+                <span>{isBrowsing ? 'Browsing...' : 'Browse Folder'}</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-muted mb-4">
+              Select a repository folder using the browser or paste the absolute path below.
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="repo-path" className="block text-sm font-medium text-text-secondary mb-2">
-                  Repository Path
-                </label>
+              <div className="relative">
                 <input
                   id="repo-path"
                   type="text"
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   placeholder="/Users/you/projects/my-app"
-                  className="w-full px-4 py-3 rounded-xl bg-navy-900/80 border border-glass-border text-text-primary placeholder-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue/50 transition-all"
+                  className="w-full px-4 py-3 pr-28 rounded-[16px] bg-surface border border-border text-ink placeholder-muted-light text-sm font-mono focus:outline-none focus:border-ink/40 focus:ring-3 focus:ring-accent/40 transition-all"
                   autoFocus
                 />
+                <button
+                  type="button"
+                  onClick={handleBrowseComputer}
+                  disabled={isBrowsing}
+                  className="absolute right-2 top-2 bottom-2 px-3 rounded-[12px] bg-surface-raised border border-border text-xs font-mono text-ink hover:bg-surface transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.45.015.9.034 1.35.056m0 0a17.93 17.93 0 0 1 13.8 0m-13.8 0V18a2.25 2.25 0 0 0 2.25 2.25h9.3A2.25 2.25 0 0 0 18.9 18V9.832m-13.8-.056A18.064 18.064 0 0 1 12 9c2.4 0 4.71.36 6.9.832M6.75 6.75a2.25 2.25 0 0 1 2.25-2.25h6a2.25 2.25 0 0 1 2.25 2.25v2.25H6.75V6.75Z" />
+                  </svg>
+                  <span>Browse</span>
+                </button>
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-accent-rose/10 border border-accent-rose/20 text-accent-rose text-sm">
-                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] bg-danger/15 text-ink text-xs border border-danger/30">
+                  <svg className="w-4 h-4 text-danger shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
                   </svg>
-                  {error}
+                  <span>{error}</span>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={!path.trim() || isConnecting}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-accent-blue to-accent-violet text-white font-semibold text-sm hover:shadow-lg hover:shadow-accent-blue/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="w-full py-3.5 px-5 rounded-[18px] bg-ink text-white font-medium text-sm hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
               >
                 {isConnecting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-accent" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Connecting...
-                  </span>
+                    <span>Connecting Repository...</span>
+                  </>
                 ) : (
-                  'Connect Repository'
+                  <>
+                    <span>Connect & Index Workspace</span>
+                    <span className="text-accent">→</span>
+                  </>
                 )}
               </button>
             </form>
           </div>
         )}
-
-        <p className="text-center text-xs text-text-muted mt-6">
-          Make sure the path points to a directory containing a <code className="text-text-secondary">.git</code> folder.
-        </p>
       </div>
     </div>
   );

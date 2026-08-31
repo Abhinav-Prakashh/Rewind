@@ -1,11 +1,51 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
 import { WatcherService } from '../services/watcher.service.js';
 import { RowDataPacket } from 'mysql2';
 
+const execAsync = promisify(exec);
 const router = Router();
+
+// POST /api/repos/browse — Open native folder picker on host computer
+router.post('/browse', async (_req: Request, res: Response) => {
+  try {
+    let chosenPath = '';
+    if (process.platform === 'darwin') {
+      try {
+        const { stdout } = await execAsync(
+          `osascript -e 'POSIX path of (choose folder with prompt "Select Git Repository:")'`
+        );
+        chosenPath = stdout.trim();
+        // remove trailing slash if any
+        if (chosenPath.endsWith('/')) {
+          chosenPath = chosenPath.slice(0, -1);
+        }
+      } catch (err: unknown) {
+        // User cancelled picker dialog
+        res.status(200).json({ path: null, cancelled: true });
+        return;
+      }
+    } else {
+      res.status(400).json({ error: 'Folder browsing not supported on this OS' });
+      return;
+    }
+
+    if (!chosenPath) {
+      res.status(200).json({ path: null, cancelled: true });
+      return;
+    }
+
+    const isValid = await GitService.isValidRepo(chosenPath);
+    res.json({ path: chosenPath, isValid });
+  } catch (error) {
+    console.error('Error browsing folder:', error);
+    res.status(500).json({ error: 'Failed to open directory browser' });
+  }
+});
 
 // POST /api/repos — Connect a local repository
 router.post('/', async (req: Request, res: Response) => {
