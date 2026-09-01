@@ -14,6 +14,8 @@ import type {
 } from '../lib/api';
 
 // ─── Repository Hook ─────────────────────────────────────────
+const ACTIVE_REPO_KEY = 'rewind:activeRepoId';
+
 export function useRepo() {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [activeRepo, setActiveRepo] = useState<Repository | null>(null);
@@ -25,7 +27,20 @@ export function useRepo() {
       setLoading(true);
       const data = await repoApi.list();
       setRepos(data);
-      // Do NOT auto-select — always land on the repo selection screen
+
+      // Restore last active repo from localStorage
+      const savedId = localStorage.getItem(ACTIVE_REPO_KEY);
+      if (savedId) {
+        const saved = data.find((r) => r.id === savedId);
+        if (saved) {
+          try {
+            const full = await repoApi.get(saved.id);
+            setActiveRepo(full);
+          } catch {
+            setActiveRepo(saved);
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch repos');
     } finally {
@@ -39,6 +54,7 @@ export function useRepo() {
       const repo = await repoApi.connect(path);
       setRepos((prev) => [repo, ...prev]);
       setActiveRepo(repo);
+      localStorage.setItem(ACTIVE_REPO_KEY, repo.id);
       return repo;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect';
@@ -51,7 +67,13 @@ export function useRepo() {
     try {
       await repoApi.disconnect(id);
       setRepos((prev) => prev.filter((r) => r.id !== id));
-      setActiveRepo((prev) => (prev?.id === id ? null : prev));
+      setActiveRepo((prev) => {
+        if (prev?.id === id) {
+          localStorage.removeItem(ACTIVE_REPO_KEY);
+          return null;
+        }
+        return prev;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disconnect');
     }
@@ -61,16 +83,23 @@ export function useRepo() {
     try {
       const fullRepo = await repoApi.get(repo.id);
       setActiveRepo(fullRepo);
+      localStorage.setItem(ACTIVE_REPO_KEY, fullRepo.id);
     } catch {
       setActiveRepo(repo);
+      localStorage.setItem(ACTIVE_REPO_KEY, repo.id);
     }
+  }, []);
+
+  const deselectRepo = useCallback(() => {
+    setActiveRepo(null);
+    localStorage.removeItem(ACTIVE_REPO_KEY);
   }, []);
 
   useEffect(() => {
     fetchRepos();
   }, [fetchRepos]);
 
-  return { repos, activeRepo, loading, error, connectRepo, disconnectRepo, selectRepo, refresh: fetchRepos };
+  return { repos, activeRepo, loading, error, connectRepo, disconnectRepo, deselectRepo, selectRepo, refresh: fetchRepos };
 }
 
 // ─── Session Hook ─────────────────────────────────────────────

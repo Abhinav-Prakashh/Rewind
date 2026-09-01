@@ -68,7 +68,7 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
       branch: repo.branch || gitStatus.branch || 'main',
       startTime: repo.created_at,
       endTime: repo.created_at,
-      notes: `Repository ${repo.name} connected to Developer Memory System.`,
+      notes: `Repository ${repo.name} connected to Rewind.`,
       commits: recentCommits.slice(-1),
       files: [],
     });

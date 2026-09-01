@@ -96,7 +96,7 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-medium text-ink">AI Memory Assistant</h2>
               <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-surface text-ink-soft border border-border">
-                Semantic Recall
+                Semantic Search
               </span>
             </div>
             <p className="text-[11px] text-muted">Ask anything about past decisions, sessions, modified files, and code intent</p>

@@ -138,7 +138,7 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
           contents: `Repository Memory Context:\n${context}\n\nDeveloper Question: ${query}`,
           config: {
             systemInstruction:
-              'You are the Developer Memory System AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Be concise, use markdown bullet points, and cite specific commit hashes, branch names, and file names.',
+              'You are the Rewind AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Be concise, use markdown bullet points, and cite specific commit hashes, branch names, and file names.',
             temperature: 0.2,
           },
         });
@@ -176,7 +176,7 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
           {
             role: 'system',
             content:
-              'You are the Developer Memory System AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Do not write code unless asked for context.',
+              'You are the Rewind AI. Answer questions strictly based on the provided project history, sessions, commits, and notes. Do not write code unless asked for context.',
           },
           {
             role: 'user',

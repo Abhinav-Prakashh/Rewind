@@ -3,7 +3,7 @@ import { ConnectRepo } from './components/ConnectRepo';
 import { Dashboard } from './components/Dashboard';
 
 function App() {
-  const { repos, activeRepo, loading, error, connectRepo, disconnectRepo, selectRepo } = useRepo();
+  const { repos, activeRepo, loading, error, connectRepo, deselectRepo, selectRepo } = useRepo();
 
   // Loading state
   if (loading) {
@@ -40,7 +40,7 @@ function App() {
   return (
     <Dashboard
       repo={activeRepo}
-      onDisconnect={() => disconnectRepo(activeRepo.id)}
+      onDisconnect={deselectRepo}
     />
   );
 }

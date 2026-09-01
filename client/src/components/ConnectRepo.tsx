@@ -56,7 +56,7 @@ export function ConnectRepo({ onConnect, onSelect, repos, error }: ConnectRepoPr
               </svg>
             </div>
             <span className="text-xs font-semibold uppercase tracking-wider text-muted font-mono">
-              Recall Memory
+              Rewind
             </span>
           </div>
 
@@ -64,7 +64,7 @@ export function ConnectRepo({ onConnect, onSelect, repos, error }: ConnectRepoPr
             Pick Up Where<br />You Left Off
           </h1>
           <p className="text-sm text-muted">
-            Git remembers your code. Recall remembers your developer mental model.
+            Git remembers your code. Rewind remembers your developer mental model.
           </p>
         </div>
 
