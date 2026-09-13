@@ -1,32 +1,38 @@
-# React + TypeScript + Vite
+# Rewind Frontend Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is the frontend client for **[Rewind](..)**, built with React 19, TypeScript, Vite, and Tailwind CSS v4.
 
-Currently, two official plugins are available:
+## Features Included
+- **Supabase Authentication**: PKCE OAuth with Google & GitHub.
+- **AI Memory Assistant**: Markdown-rendered responses via `react-markdown` and `remark-gfm`.
+- **Work Session Management**: Active session indicators, timers, and note updates.
+- **Repository Dashboard**: Timeline visualizations, resume context view, and decision memory manager.
+- **User Scoped Storage**: Isolated workspaces and last-active repository memory per user ID.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Scripts
 
-## React Compiler
+```bash
+# Start development server
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# Type check & build for production
+npm run build
 
-## Expanding the Oxlint configuration
+# Lint code with oxlint
+npm run lint
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+# Preview production build
+npm run preview
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Environment Variables
+
+Ensure `.env` contains your Supabase credentials:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+```
+
+For the full setup and backend documentation, refer to the [Root README](../README.md).
