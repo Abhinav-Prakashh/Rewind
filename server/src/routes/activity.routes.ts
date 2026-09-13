@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/database.js';
 import { WatcherService } from '../services/watcher.service.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -12,8 +11,8 @@ router.get('/repos/:repoId/activities', async (req: Request, res: Response) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
 
     // Trigger git state check to ensure recent commits/branches are captured
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT path FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query<{ path: string }>(
+      'SELECT path FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -21,9 +20,9 @@ router.get('/repos/:repoId/activities', async (req: Request, res: Response) => {
       WatcherService.checkGitState(repoId as string, repos[0].path).catch(() => {});
     }
 
-    const [activities] = await pool.execute<RowDataPacket[]>(
-      `SELECT * FROM activities WHERE repo_id = ? ORDER BY timestamp DESC LIMIT ${limit}`,
-      [repoId]
+    const { rows: activities } = await pool.query(
+      'SELECT * FROM activities WHERE repo_id = $1 ORDER BY timestamp DESC LIMIT $2',
+      [repoId, limit]
     );
 
     res.json(activities);
@@ -37,8 +36,8 @@ router.get('/repos/:repoId/activities', async (req: Request, res: Response) => {
 router.get('/sessions/:sessionId/activities', async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    const [activities] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM activities WHERE session_id = ? ORDER BY timestamp DESC',
+    const { rows: activities } = await pool.query(
+      'SELECT * FROM activities WHERE session_id = $1 ORDER BY timestamp DESC',
       [sessionId]
     );
     res.json(activities);

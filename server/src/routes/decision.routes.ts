@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/database.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -22,8 +21,8 @@ router.get('/repos/:repoId/decisions', async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
 
-    const [decisions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM decisions WHERE repo_id = ? ORDER BY created_at DESC',
+    const { rows: decisions } = await pool.query(
+      'SELECT * FROM decisions WHERE repo_id = $1 ORDER BY created_at DESC',
       [repoId]
     );
 
@@ -48,14 +47,9 @@ router.post('/repos/:repoId/decisions', async (req: Request, res: Response) => {
     const id = uuidv4();
     const decisionStatus = status || 'accepted';
 
-    await pool.execute(
-      'INSERT INTO decisions (id, repo_id, title, context, decision, reason, status, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    const { rows } = await pool.query(
+      'INSERT INTO decisions (id, repo_id, title, context, decision, reason, status, tags) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [id, repoId, title, context || null, decision, reason, decisionStatus, tags || null]
-    );
-
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM decisions WHERE id = ?',
-      [id]
     );
 
     res.status(201).json(rows[0]);
@@ -71,8 +65,8 @@ router.patch('/decisions/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, context, decision, reason, status, tags } = req.body;
 
-    const [existing] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM decisions WHERE id = ?',
+    const { rows: existing } = await pool.query(
+      'SELECT * FROM decisions WHERE id = $1',
       [id]
     );
 
@@ -89,14 +83,9 @@ router.patch('/decisions/:id', async (req: Request, res: Response) => {
     const newStatus = status !== undefined ? status : current.status;
     const newTags = tags !== undefined ? tags : current.tags;
 
-    await pool.execute(
-      'UPDATE decisions SET title = ?, context = ?, decision = ?, reason = ?, status = ?, tags = ? WHERE id = ?',
+    const { rows: updated } = await pool.query(
+      'UPDATE decisions SET title = $1, context = $2, decision = $3, reason = $4, status = $5, tags = $6 WHERE id = $7 RETURNING *',
       [newTitle, newContext, newDecision, newReason, newStatus, newTags, id]
-    );
-
-    const [updated] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM decisions WHERE id = ?',
-      [id]
     );
 
     res.json(updated[0]);
@@ -111,13 +100,12 @@ router.delete('/decisions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const [result] = await pool.execute(
-      'DELETE FROM decisions WHERE id = ?',
+    const result = await pool.query(
+      'DELETE FROM decisions WHERE id = $1',
       [id]
     );
 
-    const affectedRows = (result as { affectedRows: number }).affectedRows;
-    if (affectedRows === 0) {
+    if (!result.rowCount || result.rowCount === 0) {
       res.status(404).json({ error: 'Decision not found' });
       return;
     }

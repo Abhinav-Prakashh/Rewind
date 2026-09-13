@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -31,8 +30,8 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
     const { repoId } = req.params;
 
     // Fetch repository
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -47,14 +46,14 @@ router.get('/repos/:repoId/timeline', async (req: Request, res: Response) => {
     const gitStatus = await gitService.getStatus();
 
     // Fetch all recorded sessions for repo
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE repo_id = ? ORDER BY start_time ASC',
+    const { rows: sessions } = await pool.query(
+      'SELECT * FROM sessions WHERE repo_id = $1 ORDER BY start_time ASC',
       [repoId]
     );
 
     // Fetch all activities for repo
-    const [activities] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM activities WHERE repo_id = ? ORDER BY timestamp ASC',
+    const { rows: activities } = await pool.query(
+      'SELECT * FROM activities WHERE repo_id = $1 ORDER BY timestamp ASC',
       [repoId]
     );
 

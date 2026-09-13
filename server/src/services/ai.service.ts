@@ -1,7 +1,38 @@
 import pool from '../db/database.js';
 import { GitService, CommitInfo } from './git.service.js';
-import { RowDataPacket } from 'mysql2';
 import { GoogleGenAI } from '@google/genai';
+
+export interface DBSession {
+  id: string;
+  repo_id: string;
+  branch: string;
+  start_time: string;
+  end_time: string | null;
+  notes: string | null;
+  status: string;
+}
+
+export interface DBActivity {
+  id: string;
+  repo_id: string;
+  session_id: string | null;
+  type: string;
+  file_path: string | null;
+  details: string | null;
+  timestamp: string;
+}
+
+export interface DBDecision {
+  id: string;
+  repo_id: string;
+  title: string;
+  context: string | null;
+  decision: string;
+  reason: string;
+  status: string;
+  tags: string | null;
+  created_at: string;
+}
 
 export interface MemorySource {
   type: 'session' | 'commit' | 'file' | 'note' | 'decision';
@@ -23,8 +54,8 @@ export class AIMemoryService {
     const queryLower = userQuery.toLowerCase().trim();
 
     // 1. Fetch Repository Details
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -36,20 +67,20 @@ export class AIMemoryService {
     const gitService = new GitService(repo.path);
 
     // 2. Fetch Sessions
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE repo_id = ? ORDER BY start_time DESC LIMIT 20',
+    const { rows: sessions } = await pool.query(
+      'SELECT * FROM sessions WHERE repo_id = $1 ORDER BY start_time DESC LIMIT 20',
       [repoId]
     );
 
     // 3. Fetch Activities
-    const [activities] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM activities WHERE repo_id = ? ORDER BY timestamp DESC LIMIT 50',
+    const { rows: activities } = await pool.query(
+      'SELECT * FROM activities WHERE repo_id = $1 ORDER BY timestamp DESC LIMIT 50',
       [repoId]
     );
 
     // 4. Fetch Decisions (V8)
-    const [decisions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM decisions WHERE repo_id = ? ORDER BY created_at DESC',
+    const { rows: decisions } = await pool.query(
+      'SELECT * FROM decisions WHERE repo_id = $1 ORDER BY created_at DESC',
       [repoId]
     );
 
@@ -96,11 +127,11 @@ export class AIMemoryService {
    */
   private static buildContextString(
     repoName: string,
-    sessions: RowDataPacket[],
+    sessions: DBSession[],
     commits: CommitInfo[],
-    activities: RowDataPacket[],
+    activities: DBActivity[],
     gitStatus: { branch: string; changedFiles: { path: string; status: string }[] },
-    decisions: RowDataPacket[] = []
+    decisions: DBDecision[] = []
   ): string {
     let context = `Project: ${repoName}
 Active Branch: ${gitStatus.branch}
@@ -198,10 +229,10 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
    */
   private static extractRelevantSources(
     query: string,
-    sessions: RowDataPacket[],
+    sessions: DBSession[],
     commits: CommitInfo[],
-    activities: RowDataPacket[],
-    decisions: RowDataPacket[] = []
+    activities: DBActivity[],
+    decisions: DBDecision[] = []
   ): MemorySource[] {
     const sources: MemorySource[] = [];
 
@@ -250,11 +281,11 @@ ${gitStatus.changedFiles.map((f) => `- ${f.path} (${f.status})`).join('\n')}`;
   private static generateLocalMemoryAnswer(
     query: string,
     repoName: string,
-    sessions: RowDataPacket[],
+    sessions: DBSession[],
     commits: CommitInfo[],
-    activities: RowDataPacket[],
+    activities: DBActivity[],
     gitStatus: { branch: string; changedFiles: { path: string; status: string }[] },
-    decisions: RowDataPacket[] = []
+    decisions: DBDecision[] = []
   ): AIQueryResult {
     const sources: MemorySource[] = [];
 

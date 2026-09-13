@@ -2,8 +2,7 @@ import chokidar, { FSWatcher } from 'chokidar';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/database.js';
-import { GitService } from './git.service.js';
-import { RowDataPacket } from 'mysql2';
+import { GitService, CommitInfo } from './git.service.js';
 
 interface ActiveWatcher {
   repoId: string;
@@ -155,15 +154,15 @@ export class WatcherService {
   ): Promise<void> {
     try {
       // Check if there is an active session
-      const [activeSessions] = await pool.execute<RowDataPacket[]>(
-        'SELECT id FROM sessions WHERE repo_id = ? AND status = ? LIMIT 1',
+      const { rows: activeSessions } = await pool.query<{ id: string }>(
+        'SELECT id FROM sessions WHERE repo_id = $1 AND status = $2 LIMIT 1',
         [repoId, 'active']
       );
       const sessionId = activeSessions.length > 0 ? activeSessions[0].id : null;
 
       const id = uuidv4();
-      await pool.execute(
-        'INSERT INTO activities (id, repo_id, session_id, type, file_path, details) VALUES (?, ?, ?, ?, ?, ?)',
+      await pool.query(
+        'INSERT INTO activities (id, repo_id, session_id, type, file_path, details) VALUES ($1, $2, $3, $4, $5, $6)',
         [id, repoId, sessionId, type, filePath, details]
       );
     } catch (err) {

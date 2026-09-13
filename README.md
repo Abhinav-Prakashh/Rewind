@@ -8,7 +8,7 @@
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Express](https://img.shields.io/badge/Express-4.21-000000.svg?logo=express&logoColor=white)](https://expressjs.com/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Google Gemini](https://img.shields.io/badge/Google%20Gemini-AI%20Memory-8E75B2.svg?logo=google&logoColor=white)](https://ai.google.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20PKCE-3ECF8E.svg?logo=supabase&logoColor=white)](https://supabase.com/)
 
@@ -51,7 +51,7 @@ Context switching is one of the biggest productivity killers in software develop
 ### Backend
 - **Server**: Node.js + Express
 - **Language**: TypeScript (running via `tsx` watch mode)
-- **Database**: MySQL (`mysql2` connection pool with auto-migrating schema)
+- **Database**: PostgreSQL (`pg` connection pool with auto-migrating schema)
 - **AI / LLM**: Google Gemini API (`@google/genai`, `@google/generative-ai`)
 - **Git & Filesystem**: `simple-git`, `chokidar`
 
@@ -75,7 +75,7 @@ Rewind/
 │
 ├── server/                     # Backend Express API & Database
 │   ├── src/
-│   │   ├── db/                 # MySQL connection pool & table schemas
+│   │   ├── db/                 # PostgreSQL connection pool & table schemas
 │   │   ├── middleware/         # Supabase Bearer token verification
 │   │   ├── routes/             # REST routes (repo, session, git, ai, decision, etc.)
 │   │   ├── services/           # AI service (Gemini), Git service, Watcher service
@@ -93,7 +93,7 @@ Rewind/
 
 ### Prerequisites
 - **Node.js** v18 or higher (v20+ recommended)
-- **MySQL** running locally or remotely
+- **PostgreSQL** (local instance or cloud database such as Render / Supabase / Neon)
 - **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com))
 - **Supabase Project** (for OAuth & User Authentication)
 
@@ -119,14 +119,11 @@ npm run install:all
 ### 3. Configure Environment Variables
 
 #### Backend (`server/.env`)
-Create `server/.env` with your MySQL credentials, Gemini key, and Supabase config:
+Create `server/.env` with your PostgreSQL `DATABASE_URL`, Gemini key, and Supabase config:
 
 ```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=dms
+# PostgreSQL Database URL (Render / Supabase / Neon / Local)
+DATABASE_URL=postgresql://user:password@localhost:5432/dms
 
 # Google Gemini API Key
 GEMINI_API_KEY=your_gemini_api_key
@@ -152,7 +149,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
 
 ### 4. Database Setup
 
-Ensure MySQL is running. When you start the server, Rewind will **automatically** create the `dms` database and initialize all required tables (`repositories`, `sessions`, `activities`, `decisions`) along with necessary indexes.
+Ensure PostgreSQL is accessible via your `DATABASE_URL`. When you start the server, Rewind will **automatically** initialize all required tables (`repositories`, `sessions`, `activities`, `decisions`) along with their foreign keys and performance indexes.
 
 ---
 

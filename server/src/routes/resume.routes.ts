@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/database.js';
 import { GitService, CommitInfo } from '../services/git.service.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -48,8 +47,8 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
     const { repoId } = req.params;
 
     // Fetch repository
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -62,8 +61,8 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
     const gitService = new GitService(repo.path);
 
     // Fetch last completed session or active session
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE repo_id = ? ORDER BY start_time DESC LIMIT 5',
+    const { rows: sessions } = await pool.query(
+      'SELECT * FROM sessions WHERE repo_id = $1 ORDER BY start_time DESC LIMIT 5',
       [repoId]
     );
 
@@ -97,8 +96,8 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
     });
 
     if (referenceSession) {
-      const [activities] = await pool.execute<RowDataPacket[]>(
-        'SELECT file_path, type FROM activities WHERE session_id = ? AND file_path IS NOT NULL LIMIT 20',
+      const { rows: activities } = await pool.query<{ file_path: string; type: string }>(
+        'SELECT file_path, type FROM activities WHERE session_id = $1 AND file_path IS NOT NULL LIMIT 20',
         [referenceSession.id]
       );
       activities.forEach((act) => {

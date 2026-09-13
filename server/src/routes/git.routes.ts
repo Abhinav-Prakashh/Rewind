@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -10,8 +9,8 @@ router.get('/:repoId/git/status', async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
 
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query<{ path: string }>(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -35,8 +34,8 @@ router.get('/:repoId/git/commits', async (req: Request, res: Response) => {
     const { repoId } = req.params;
     const count = parseInt(req.query.count as string) || 10;
 
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query<{ path: string }>(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 
@@ -59,8 +58,8 @@ router.get('/:repoId/git/branch', async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
 
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query<{ path: string }>(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
 

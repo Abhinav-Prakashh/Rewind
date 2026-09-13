@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
-import { RowDataPacket } from 'mysql2';
 
 const router = Router();
 
@@ -12,8 +11,8 @@ router.post('/repos/:repoId/sessions', async (req: Request, res: Response) => {
     const { repoId } = req.params;
 
     // Verify repo exists
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE id = $1',
       [repoId]
     );
     if (repos.length === 0) {
@@ -22,8 +21,8 @@ router.post('/repos/:repoId/sessions', async (req: Request, res: Response) => {
     }
 
     // End any currently active sessions for this repo
-    await pool.execute(
-      'UPDATE sessions SET status = ?, end_time = NOW() WHERE repo_id = ? AND status = ?',
+    await pool.query(
+      'UPDATE sessions SET status = $1, end_time = NOW() WHERE repo_id = $2 AND status = $3',
       ['completed', repoId, 'active']
     );
 
@@ -32,14 +31,9 @@ router.post('/repos/:repoId/sessions', async (req: Request, res: Response) => {
     const branch = await gitService.getCurrentBranch();
 
     const id = uuidv4();
-    await pool.execute(
-      'INSERT INTO sessions (id, repo_id, branch) VALUES (?, ?, ?)',
+    const { rows: sessions } = await pool.query(
+      'INSERT INTO sessions (id, repo_id, branch) VALUES ($1, $2, $3) RETURNING *',
       [id, repoId, branch]
-    );
-
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE id = ?',
-      [id]
     );
 
     res.status(201).json(sessions[0]);
@@ -54,21 +48,15 @@ router.patch('/sessions/:id/end', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const [result] = await pool.execute(
-      'UPDATE sessions SET status = ?, end_time = NOW() WHERE id = ? AND status = ?',
+    const { rows: sessions, rowCount } = await pool.query(
+      'UPDATE sessions SET status = $1, end_time = NOW() WHERE id = $2 AND status = $3 RETURNING *',
       ['completed', id, 'active']
     );
 
-    const affectedRows = (result as { affectedRows: number }).affectedRows;
-    if (affectedRows === 0) {
+    if (!rowCount || rowCount === 0) {
       res.status(404).json({ error: 'Active session not found' });
       return;
     }
-
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE id = ?',
-      [id]
-    );
 
     res.json(sessions[0]);
   } catch (error) {
@@ -83,21 +71,15 @@ router.patch('/sessions/:id/notes', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { notes } = req.body;
 
-    const [result] = await pool.execute(
-      'UPDATE sessions SET notes = ? WHERE id = ?',
+    const { rows: sessions, rowCount } = await pool.query(
+      'UPDATE sessions SET notes = $1 WHERE id = $2 RETURNING *',
       [notes, id]
     );
 
-    const affectedRows = (result as { affectedRows: number }).affectedRows;
-    if (affectedRows === 0) {
+    if (!rowCount || rowCount === 0) {
       res.status(404).json({ error: 'Session not found' });
       return;
     }
-
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE id = ?',
-      [id]
-    );
 
     res.json(sessions[0]);
   } catch (error) {
@@ -110,8 +92,8 @@ router.patch('/sessions/:id/notes', async (req: Request, res: Response) => {
 router.get('/repos/:repoId/sessions', async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE repo_id = ? ORDER BY start_time DESC LIMIT 20',
+    const { rows: sessions } = await pool.query(
+      'SELECT * FROM sessions WHERE repo_id = $1 ORDER BY start_time DESC LIMIT 20',
       [repoId]
     );
     res.json(sessions);
@@ -125,8 +107,8 @@ router.get('/repos/:repoId/sessions', async (req: Request, res: Response) => {
 router.get('/repos/:repoId/sessions/active', async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
-    const [sessions] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM sessions WHERE repo_id = ? AND status = ? LIMIT 1',
+    const { rows: sessions } = await pool.query(
+      'SELECT * FROM sessions WHERE repo_id = $1 AND status = $2 LIMIT 1',
       [repoId, 'active']
     );
 
@@ -142,19 +124,17 @@ router.get('/repos/:repoId/sessions/active', async (req: Request, res: Response)
   }
 });
 
-
 // DELETE /api/sessions/:id — Delete a session
 router.delete('/sessions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const [result] = await pool.execute(
-      'DELETE FROM sessions WHERE id = ?',
+    const result = await pool.query(
+      'DELETE FROM sessions WHERE id = $1',
       [id]
     );
 
-    const affectedRows = (result as { affectedRows: number }).affectedRows;
-    if (affectedRows === 0) {
+    if (!result.rowCount || result.rowCount === 0) {
       res.status(404).json({ error: 'Session not found' });
       return;
     }

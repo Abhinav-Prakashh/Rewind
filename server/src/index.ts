@@ -11,7 +11,6 @@ import timelineRoutes from './routes/timeline.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import decisionRoutes from './routes/decision.routes.js';
 import { WatcherService } from './services/watcher.service.js';
-import { RowDataPacket } from 'mysql2';
 
 dotenv.config();
 
@@ -47,7 +46,7 @@ async function start() {
     await initializeDatabase();
 
     // Start watching existing connected repositories
-    const [repos] = await pool.execute<RowDataPacket[]>('SELECT id, path FROM repositories');
+    const { rows: repos } = await pool.query<{ id: string; path: string }>('SELECT id, path FROM repositories');
     for (const repo of repos) {
       WatcherService.startWatching(repo.id, repo.path).catch(() => {});
     }

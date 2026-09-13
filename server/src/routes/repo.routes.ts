@@ -5,7 +5,6 @@ import { promisify } from 'util';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
 import { WatcherService } from '../services/watcher.service.js';
-import { RowDataPacket } from 'mysql2';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
 
 const execAsync = promisify(exec);
@@ -70,8 +69,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Check if already connected for THIS user
-    const [existing] = await pool.execute<RowDataPacket[]>(
-      'SELECT id FROM repositories WHERE path = ? AND user_id = ?',
+    const { rows: existing } = await pool.query<{ id: string }>(
+      'SELECT id FROM repositories WHERE path = $1 AND user_id = $2',
       [repoPath, userId]
     );
     if (existing.length > 0) {
@@ -82,8 +81,8 @@ router.post('/', async (req: Request, res: Response) => {
     const id = uuidv4();
     const name = GitService.getRepoName(repoPath);
 
-    await pool.execute(
-      'INSERT INTO repositories (id, user_id, name, path) VALUES (?, ?, ?, ?)',
+    await pool.query(
+      'INSERT INTO repositories (id, user_id, name, path) VALUES ($1, $2, $3, $4)',
       [id, userId, name, repoPath]
     );
 
@@ -106,8 +105,8 @@ router.get('/', async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).userId;
 
   try {
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE user_id = ? ORDER BY created_at DESC',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     res.json(repos);
@@ -122,8 +121,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).userId;
 
   try {
-    const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ? AND user_id = ?',
+    const { rows: repos } = await pool.query(
+      'SELECT * FROM repositories WHERE id = $1 AND user_id = $2',
       [req.params.id, userId]
     );
 
@@ -148,13 +147,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).userId;
 
   try {
-    const [result] = await pool.execute(
-      'DELETE FROM repositories WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM repositories WHERE id = $1 AND user_id = $2',
       [req.params.id, userId]
     );
 
-    const affectedRows = (result as { affectedRows: number }).affectedRows;
-    if (affectedRows === 0) {
+    if (!result.rowCount || result.rowCount === 0) {
       res.status(404).json({ error: 'Repository not found' });
       return;
     }
