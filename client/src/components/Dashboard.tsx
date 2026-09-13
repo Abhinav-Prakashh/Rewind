@@ -16,6 +16,7 @@ import { SessionPanel } from './SessionPanel';
 import { SessionModal } from './SessionModal';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
+import { UserProfileMenu } from './auth/UserProfileMenu';
 
 interface DashboardProps {
   repo: Repository;
@@ -106,20 +107,12 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
           </nav>
         </div>
 
-        {/* Bottom Avatar & Switch Workspace */}
+        {/* Bottom User Profile & Actions */}
         <div className="flex md:flex-col items-center gap-3">
-          <button
-            onClick={onDisconnect}
-            title="Switch workspace"
-            className="w-10 h-10 rounded-[12px] bg-white/5 hover:bg-white/15 hover:text-white text-white/60 flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-            </svg>
-          </button>
-          <div className="w-9 h-9 rounded-full bg-accent text-accent-ink font-bold text-xs flex items-center justify-center">
-            {repo.name.charAt(0).toUpperCase()}
-          </div>
+          <UserProfileMenu
+            onDisconnectWorkspace={onDisconnect}
+            workspaceName={repo.name}
+          />
         </div>
       </aside>
 
