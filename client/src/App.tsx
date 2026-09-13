@@ -55,9 +55,15 @@ function App() {
       }
     };
 
+    const handleSignOut = () => {
+      setCurrentPath('/login');
+    };
+
     window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('rewind:signout', handleSignOut);
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('rewind:signout', handleSignOut);
     };
   }, []);
 

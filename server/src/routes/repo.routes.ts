@@ -6,9 +6,13 @@ import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
 import { WatcherService } from '../services/watcher.service.js';
 import { RowDataPacket } from 'mysql2';
+import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
 
 const execAsync = promisify(exec);
 const router = Router();
+
+// All repo routes require authentication
+router.use(requireAuth);
 
 // POST /api/repos/browse — Open native folder picker on host computer
 router.post('/browse', async (_req: Request, res: Response) => {
@@ -24,7 +28,7 @@ router.post('/browse', async (_req: Request, res: Response) => {
         if (chosenPath.endsWith('/')) {
           chosenPath = chosenPath.slice(0, -1);
         }
-      } catch (err: unknown) {
+      } catch {
         // User cancelled picker dialog
         res.status(200).json({ path: null, cancelled: true });
         return;
@@ -47,8 +51,10 @@ router.post('/browse', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/repos — Connect a local repository
+// POST /api/repos — Connect a local repository (scoped to current user)
 router.post('/', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).userId;
+
   try {
     const { path: repoPath } = req.body;
 
@@ -63,10 +69,10 @@ router.post('/', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if already connected
+    // Check if already connected for THIS user
     const [existing] = await pool.execute<RowDataPacket[]>(
-      'SELECT id FROM repositories WHERE path = ?',
-      [repoPath]
+      'SELECT id FROM repositories WHERE path = ? AND user_id = ?',
+      [repoPath, userId]
     );
     if (existing.length > 0) {
       res.status(409).json({ error: 'Repository already connected', id: existing[0].id });
@@ -77,8 +83,8 @@ router.post('/', async (req: Request, res: Response) => {
     const name = GitService.getRepoName(repoPath);
 
     await pool.execute(
-      'INSERT INTO repositories (id, name, path) VALUES (?, ?, ?)',
-      [id, name, repoPath]
+      'INSERT INTO repositories (id, user_id, name, path) VALUES (?, ?, ?, ?)',
+      [id, userId, name, repoPath]
     );
 
     // Start watching repository
@@ -94,11 +100,15 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/repos — List connected repositories
-router.get('/', async (_req: Request, res: Response) => {
+// GET /api/repos — List repositories belonging to the authenticated user
+// Legacy rows (user_id IS NULL) are intentionally excluded
+router.get('/', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).userId;
+
   try {
     const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories ORDER BY created_at DESC'
+      'SELECT * FROM repositories WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
     );
     res.json(repos);
   } catch (error) {
@@ -107,12 +117,14 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/repos/:id — Get repo details
+// GET /api/repos/:id — Get repo details (must belong to current user)
 router.get('/:id', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).userId;
+
   try {
     const [repos] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM repositories WHERE id = ?',
-      [req.params.id]
+      'SELECT * FROM repositories WHERE id = ? AND user_id = ?',
+      [req.params.id, userId]
     );
 
     if (repos.length === 0) {
@@ -131,12 +143,14 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/repos/:id — Disconnect a repository
+// DELETE /api/repos/:id — Disconnect a repository (must belong to current user)
 router.delete('/:id', async (req: Request, res: Response) => {
+  const userId = (req as AuthenticatedRequest).userId;
+
   try {
     const [result] = await pool.execute(
-      'DELETE FROM repositories WHERE id = ?',
-      [req.params.id]
+      'DELETE FROM repositories WHERE id = ? AND user_id = ?',
+      [req.params.id, userId]
     );
 
     const affectedRows = (result as { affectedRows: number }).affectedRows;

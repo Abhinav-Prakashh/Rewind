@@ -12,24 +12,37 @@ import type {
   GitStatus,
   Activity,
 } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 // ─── Repository Hook ─────────────────────────────────────────
-const ACTIVE_REPO_KEY = 'rewind:activeRepoId';
+
+/** Returns the localStorage key scoped to a specific Supabase user. */
+function activeRepoKey(userId: string): string {
+  return `rewind:activeRepoId:${userId}`;
+}
 
 export function useRepo() {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [activeRepo, setActiveRepo] = useState<Repository | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const fetchRepos = useCallback(async () => {
+  // Resolve the current user once on mount
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user.id ?? null);
+    });
+  }, []);
+
+  const fetchRepos = useCallback(async (uid: string) => {
     try {
       setLoading(true);
       const data = await repoApi.list();
       setRepos(data);
 
-      // Restore last active repo from localStorage
-      const savedId = localStorage.getItem(ACTIVE_REPO_KEY);
+      // Restore last active repo from localStorage — scoped to this user
+      const savedId = localStorage.getItem(activeRepoKey(uid));
       if (savedId) {
         const saved = data.find((r) => r.id === savedId);
         if (saved) {
@@ -49,19 +62,20 @@ export function useRepo() {
   }, []);
 
   const connectRepo = useCallback(async (path: string) => {
+    if (!userId) throw new Error('Not authenticated');
     try {
       setError(null);
       const repo = await repoApi.connect(path);
       setRepos((prev) => [repo, ...prev]);
       setActiveRepo(repo);
-      localStorage.setItem(ACTIVE_REPO_KEY, repo.id);
+      localStorage.setItem(activeRepoKey(userId), repo.id);
       return repo;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect';
       setError(message);
       throw err;
     }
-  }, []);
+  }, [userId]);
 
   const disconnectRepo = useCallback(async (id: string) => {
     try {
@@ -69,7 +83,7 @@ export function useRepo() {
       setRepos((prev) => prev.filter((r) => r.id !== id));
       setActiveRepo((prev) => {
         if (prev?.id === id) {
-          localStorage.removeItem(ACTIVE_REPO_KEY);
+          if (userId) localStorage.removeItem(activeRepoKey(userId));
           return null;
         }
         return prev;
@@ -77,29 +91,33 @@ export function useRepo() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disconnect');
     }
-  }, []);
+  }, [userId]);
 
   const selectRepo = useCallback(async (repo: Repository) => {
+    if (!userId) return;
     try {
       const fullRepo = await repoApi.get(repo.id);
       setActiveRepo(fullRepo);
-      localStorage.setItem(ACTIVE_REPO_KEY, fullRepo.id);
+      localStorage.setItem(activeRepoKey(userId), fullRepo.id);
     } catch {
       setActiveRepo(repo);
-      localStorage.setItem(ACTIVE_REPO_KEY, repo.id);
+      localStorage.setItem(activeRepoKey(userId), repo.id);
     }
-  }, []);
+  }, [userId]);
 
   const deselectRepo = useCallback(() => {
     setActiveRepo(null);
-    localStorage.removeItem(ACTIVE_REPO_KEY);
-  }, []);
+    if (userId) localStorage.removeItem(activeRepoKey(userId));
+  }, [userId]);
 
+  // Fetch repos once the user ID is resolved
   useEffect(() => {
-    fetchRepos();
-  }, [fetchRepos]);
+    if (userId) {
+      fetchRepos(userId);
+    }
+  }, [userId, fetchRepos]);
 
-  return { repos, activeRepo, loading, error, connectRepo, disconnectRepo, deselectRepo, selectRepo, refresh: fetchRepos };
+  return { repos, activeRepo, loading, error, connectRepo, disconnectRepo, deselectRepo, selectRepo, refresh: () => { if (userId) fetchRepos(userId); } };
 }
 
 // ─── Session Hook ─────────────────────────────────────────────

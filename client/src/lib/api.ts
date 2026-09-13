@@ -1,9 +1,31 @@
+import { supabase } from './supabase';
+
 const API_BASE = 'http://localhost:3001/api';
 
+/**
+ * Returns the current Supabase access token, or null if not authenticated.
+ * Used to authenticate requests to the Rewind server.
+ */
+async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = await getAccessToken();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -226,7 +248,3 @@ export const decisionApi = {
       method: 'DELETE',
     }),
 };
-
-
-
-

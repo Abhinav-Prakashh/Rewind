@@ -49,6 +49,8 @@ export function useAuth() {
     } catch (err) {
       console.error('Failed to sign out:', err);
     }
+    // Signal the rest of the app to clear user-scoped state
+    window.dispatchEvent(new CustomEvent('rewind:signout'));
     window.history.pushState(null, '', '/login');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };

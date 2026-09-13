@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { aiApi, type MemorySource } from '../lib/api';
 
 interface Message {
@@ -69,7 +71,7 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
-    } catch (err) {
+    } catch {
       const errorMessage: Message = {
         id: `err-${Date.now()}`,
         sender: 'ai',
@@ -154,7 +156,71 @@ export function AIMemoryChat({ repoId, repoName }: AIMemoryChatProps) {
                   : 'bg-surface border border-border text-ink rounded-bl-[4px]'
               }`}
             >
-              <div className="whitespace-pre-line text-xs leading-relaxed">{msg.text}</div>
+              {msg.sender === 'user' ? (
+                <div className="whitespace-pre-wrap break-words text-xs leading-relaxed">{msg.text}</div>
+              ) : (
+                <div className="text-xs leading-relaxed text-ink break-words overflow-hidden">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
+                      strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      ul: ({ children }) => <ul className="list-disc pl-4 my-1.5 space-y-0.5">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal pl-4 my-1.5 space-y-0.5">{children}</ol>,
+                      li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
+                      h1: ({ children }) => <h1 className="text-sm font-semibold text-ink mt-2 mb-1 first:mt-0">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-xs font-semibold text-ink mt-2 mb-1 first:mt-0">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-xs font-semibold text-ink mt-1.5 mb-0.5 first:mt-0">{children}</h3>,
+                      h4: ({ children }) => <h4 className="text-xs font-medium text-ink mt-1 mb-0.5 first:mt-0">{children}</h4>,
+                      code: ({ className, children, ...props }) => (
+                        <code
+                          className={`font-mono text-[11px] bg-surface-raised border border-border px-1.5 py-0.5 rounded text-ink break-words ${className || ''}`}
+                          {...props}
+                        >
+                          {children}
+                        </code>
+                      ),
+                      pre: ({ children, ...props }) => (
+                        <pre
+                          className="my-2 rounded-[10px] bg-surface-raised border border-border p-2.5 overflow-x-auto text-[11px] font-mono text-ink max-w-full [&>code]:bg-transparent [&>code]:border-0 [&>code]:p-0 [&>code]:rounded-none [&>code]:text-inherit"
+                          {...props}
+                        >
+                          {children}
+                        </pre>
+                      ),
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-ink font-medium underline decoration-muted/50 underline-offset-2 hover:decoration-ink hover:text-ink transition-colors break-words"
+                        >
+                          {children}
+                        </a>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-2 border-border pl-2.5 my-1.5 text-muted italic">
+                          {children}
+                        </blockquote>
+                      ),
+                      hr: () => <hr className="my-2 border-border" />,
+                      table: ({ children }) => (
+                        <div className="my-2 overflow-x-auto max-w-full rounded-[8px] border border-border">
+                          <table className="w-full border-collapse text-[11px]">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-surface-raised border-b border-border">{children}</thead>,
+                      tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+                      tr: ({ children }) => <tr className="hover:bg-surface-raised/50 transition-colors">{children}</tr>,
+                      th: ({ children }) => <th className="px-2.5 py-1.5 text-left font-semibold text-ink border-r border-border last:border-r-0">{children}</th>,
+                      td: ({ children }) => <td className="px-2.5 py-1.5 text-ink border-r border-border last:border-r-0">{children}</td>,
+                    }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
+                </div>
+              )}
 
               {/* Source Citations */}
               {msg.sources && msg.sources.length > 0 && (

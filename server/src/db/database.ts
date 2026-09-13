@@ -31,11 +31,31 @@ export async function initializeDatabase(): Promise<void> {
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS repositories (
       id VARCHAR(36) PRIMARY KEY,
+      user_id VARCHAR(36) NULL,
       name VARCHAR(255) NOT NULL,
       path TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_repositories_user_id (user_id)
     )
   `);
+
+  // Migration: add user_id to existing installations that lack it
+  const [cols] = await pool.execute<mysql.RowDataPacket[]>(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'repositories'
+       AND COLUMN_NAME = 'user_id'`
+  );
+  if ((cols[0] as { cnt: number }).cnt === 0) {
+    await pool.execute(
+      'ALTER TABLE repositories ADD COLUMN user_id VARCHAR(36) NULL AFTER id'
+    );
+    await pool.execute(
+      'CREATE INDEX idx_repositories_user_id ON repositories (user_id)'
+    );
+    console.log('✅ Migration: added user_id column to repositories');
+  }
 
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -79,7 +99,6 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   console.log('✅ Database initialized successfully');
-
 }
 
 export default pool;
