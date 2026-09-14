@@ -20,6 +20,14 @@ export class WatcherService {
    * Starts watching a repository for file and git changes
    */
   static async startWatching(repoId: string, repoPath: string): Promise<void> {
+    // Local filesystem watchers are only meaningful in development.
+    // On Render (or any production deployment) the local paths do not exist,
+    // so we skip watcher setup entirely while keeping all API/DB functionality.
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`⏭️  Skipping file watcher in production for repo (${repoId})`);
+      return;
+    }
+
     if (this.watchers.has(repoId)) {
       return; // Already watching
     }
@@ -109,6 +117,8 @@ export class WatcherService {
    * Checks git branch & commit changes
    */
   static async checkGitState(repoId: string, repoPath: string): Promise<void> {
+    if (process.env.NODE_ENV === 'production') return;
+
     const watcherInfo = this.watchers.get(repoId);
     if (!watcherInfo) return;
 
