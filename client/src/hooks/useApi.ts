@@ -61,11 +61,11 @@ export function useRepo() {
     }
   }, []);
 
-  const connectRepo = useCallback(async (path: string) => {
+  const connectRepo = useCallback(async (path: string | import('../lib/snapshotPolicy').RepositorySnapshot) => {
     if (!userId) throw new Error('Not authenticated');
     try {
       setError(null);
-      const repo = await repoApi.connect(path);
+      const repo = typeof path === 'string' ? await repoApi.connect(path) : await repoApi.upload(path);
       setRepos((prev) => [repo, ...prev]);
       setActiveRepo(repo);
       localStorage.setItem(activeRepoKey(userId), repo.id);

@@ -16,7 +16,7 @@ router.get('/repos/:repoId/activities', async (req: Request, res: Response) => {
       [repoId]
     );
 
-    if (repos.length > 0) {
+    if (repos.length > 0 && process.env.NODE_ENV !== 'production' && !repos[0].path.startsWith('snapshot:')) {
       WatcherService.checkGitState(repoId as string, repos[0].path).catch(() => {});
     }
 

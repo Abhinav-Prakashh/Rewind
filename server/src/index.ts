@@ -1,4 +1,7 @@
 import express from 'express';
+import { requireAuth } from './middleware/auth.js';
+import { requireOwnership } from './middleware/ownership.js';
+import snapshotRoutes from './routes/snapshot.routes.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool, { initializeDatabase } from './db/database.js';
@@ -18,8 +21,18 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173,https://rewind-silk.vercel.app').split(',').map(s => s.trim());
+app.use(cors({ origin: origins, allowedHeaders: ['Content-Type', 'Authorization'] }));
+app.get('/api/health', (_req, res) => res.json({status: 'ok'}));
+app.use('/api', requireAuth, requireOwnership);
+// Authenticate before accepting large request bodies. Uploads go directly to Render.
+app.use('/api/repos', snapshotRoutesMiddleware);
+function snapshotRoutesMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const upload = req.method === 'POST' && (req.path === '/snapshots' || /^\/[^/]+\/snapshot$/.test(req.path));
+  express.json({limit: upload ? '6mb' : '100kb', inflate: false})(req, res, next);
+}
+app.use(express.json({limit: '100kb'}));
+app.use('/api/repos', snapshotRoutes);
 
 // Routes
 app.use('/api/repos', repoRoutes);
@@ -40,13 +53,19 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.use((error: {status?: number; type?: string}, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = error.status || 500;
+  res.status(status).json({error: status === 413 ? 'Upload exceeds the 6 MiB request limit.' : status === 400 ? 'Invalid JSON request.' : 'Request failed.'});
+});
+export { app };
+
 // Initialize database and start server
 async function start() {
   try {
     await initializeDatabase();
 
     // Start watching existing connected repositories
-    const { rows: repos } = await pool.query<{ id: string; path: string }>('SELECT id, path FROM repositories');
+    const { rows: repos } = await pool.query<{ id: string; path: string }>("SELECT id, path FROM repositories WHERE source='local'");
     for (const repo of repos) {
       WatcherService.startWatching(repo.id, repo.path).catch(() => {});
     }
@@ -61,4 +80,4 @@ async function start() {
   }
 }
 
-start();
+if (process.env.NODE_ENV !== 'test') start();

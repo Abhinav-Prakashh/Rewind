@@ -23,7 +23,7 @@ export class WatcherService {
     // Local filesystem watchers are only meaningful in development.
     // On Render (or any production deployment) the local paths do not exist,
     // so we skip watcher setup entirely while keeping all API/DB functionality.
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' || repoPath.startsWith('snapshot:')) {
       console.log(`⏭️  Skipping file watcher in production for repo (${repoId})`);
       return;
     }

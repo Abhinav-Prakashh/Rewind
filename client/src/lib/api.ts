@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001/api' : '')).replace(/\/$/, '');
 
 /**
  * Returns the current Supabase access token, or null if not authenticated.
@@ -12,6 +12,7 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  if (!API_BASE) throw new Error('Set VITE_API_URL to your Render HTTPS API URL and redeploy the frontend.');
   const token = await getAccessToken();
 
   const headers: Record<string, string> = {
@@ -38,6 +39,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 // Repository types
 export interface Repository {
+  source?: 'local' | 'snapshot';
+  snapshot_at?: string;
+  file_count?: number;
   id: string;
   name: string;
   path: string;
@@ -73,6 +77,7 @@ export interface GitStatus {
 
 // Repository API
 export const repoApi = {
+  upload: (snapshot: import('./snapshotPolicy').RepositorySnapshot, id?: string) => request<Repository>(id ? `/repos/${id}/snapshot` : '/repos/snapshots', {method:'POST',body:JSON.stringify(snapshot)}),
   list: () => request<Repository[]>('/repos'),
   get: (id: string) => request<Repository>(`/repos/${id}`),
   browse: () =>

@@ -82,7 +82,7 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
 
     // 3. Working On Context — always derived from git commit, never session notes
     // (session notes/name is shown separately in the session panel and timeline)
-    let workingOn = 'General project updates';
+    let workingOn = repo.source === 'snapshot' ? 'Uploaded repository snapshot' : 'General project updates';
     if (lastCommit) {
       workingOn = lastCommit.message;
     }
@@ -107,6 +107,10 @@ router.get('/repos/:repoId/resume', async (req: Request, res: Response) => {
       });
     }
 
+    if (repo.source === 'snapshot') {
+      const uploaded = await pool.query('SELECT path FROM repository_files WHERE repo_id=$1 ORDER BY path LIMIT 20', [repoId]);
+      uploaded.rows.forEach(f => filesSet.set(f.path, 'snapshot'));
+    }
     const files = Array.from(filesSet.entries()).map(([filePath, status]) => ({
       path: filePath,
       status,

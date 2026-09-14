@@ -5,13 +5,18 @@ import { promisify } from 'util';
 import pool from '../db/database.js';
 import { GitService } from '../services/git.service.js';
 import { WatcherService } from '../services/watcher.service.js';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
+import { AuthenticatedRequest } from '../middleware/auth.js';
 
 const execAsync = promisify(exec);
 const router = Router();
 
 // All repo routes require authentication
-router.use(requireAuth);
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.method === 'POST' && ['/', '/browse'].includes(req.path)) {
+    res.status(400).json({error:'Choose a folder in your browser and upload a snapshot. Local paths are only available in development.'}); return;
+  }
+  next();
+});
 
 // POST /api/repos/browse — Open native folder picker on host computer
 router.post('/browse', async (_req: Request, res: Response) => {

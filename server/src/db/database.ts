@@ -33,6 +33,23 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_repositories_user_id ON repositories (user_id);
   `);
 
+  await pool.query(`
+    ALTER TABLE repositories ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'local';
+    ALTER TABLE repositories ADD COLUMN IF NOT EXISTS snapshot_at TIMESTAMPTZ;
+    CREATE TABLE IF NOT EXISTS repository_files (
+      repo_id VARCHAR(36) NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+      path TEXT NOT NULL,
+      content TEXT NOT NULL,
+      size INTEGER NOT NULL CHECK (size >= 0 AND size <= 262144),
+      last_modified BIGINT NOT NULL,
+      sha256 CHAR(64) NOT NULL,
+      PRIMARY KEY (repo_id, path)
+    );
+    CREATE INDEX IF NOT EXISTS repository_files_search ON repository_files
+      USING GIN (to_tsvector('simple', path || ' ' || content));
+    ALTER TABLE repository_files ENABLE ROW LEVEL SECURITY;
+  `);
+
   // Create sessions table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (

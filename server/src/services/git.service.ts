@@ -20,12 +20,12 @@ export interface GitStatus {
 }
 
 export class GitService {
-  private git: SimpleGit;
+  private git: SimpleGit | null;
   private repoPath: string;
 
   constructor(repoPath: string) {
     this.repoPath = repoPath;
-    this.git = simpleGit(repoPath);
+    this.git = repoPath.startsWith('snapshot:') || process.env.NODE_ENV === 'production' ? null : simpleGit(repoPath);
   }
 
   /**
@@ -56,6 +56,7 @@ export class GitService {
    * Gets the current active branch
    */
   async getCurrentBranch(): Promise<string> {
+    if (!this.git) return this.repoPath.startsWith('snapshot:') ? 'Snapshot' : 'Unavailable';
     const branchSummary = await this.git.branchLocal();
     return branchSummary.current;
   }
@@ -64,6 +65,7 @@ export class GitService {
    * Gets recent commits
    */
   async getRecentCommits(count: number = 10): Promise<CommitInfo[]> {
+    if (!this.git) return [];
     try {
       const log = await this.git.log({ maxCount: count });
       return log.all.map((commit) => ({
@@ -81,6 +83,7 @@ export class GitService {
    * Gets the current git status including changed files
    */
   async getStatus(): Promise<GitStatus> {
+    if (!this.git) return {branch: await this.getCurrentBranch(), changedFiles: [], ahead: 0, behind: 0};
     try {
       const status = await this.git.status();
       const branch = await this.getCurrentBranch();
@@ -113,6 +116,7 @@ export class GitService {
    * Gets commits created since a specific date
    */
   async getCommitsSince(sinceDate: string | Date): Promise<CommitInfo[]> {
+    if (!this.git) return [];
     try {
       const sinceISO = typeof sinceDate === 'string' ? sinceDate : new Date(sinceDate).toISOString();
       const log = await this.git.log({ '--since': sinceISO });
@@ -131,6 +135,7 @@ export class GitService {
    * Gets list of local branches
    */
   async getLocalBranches(): Promise<string[]> {
+    if (!this.git) return [];
     try {
       const branchSummary = await this.git.branchLocal();
       return branchSummary.all;
