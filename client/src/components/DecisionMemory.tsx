@@ -95,11 +95,8 @@ export function DecisionMemory({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-medium text-ink">Decision Memory</h2>
-              <span className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-surface text-ink-soft border border-border">
-                ADR Log
-              </span>
             </div>
-            <p className="text-xs text-muted">Architecture decision records & engineering rationale</p>
+            <p className="text-xs text-muted">Track key engineering decisions & rationale</p>
           </div>
         </div>
 
@@ -151,12 +148,12 @@ export function DecisionMemory({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          Loading architecture decisions...
+          Loading decisions...
         </div>
       ) : filteredDecisions.length === 0 ? (
         <div className="py-8 text-center text-muted text-xs bg-surface rounded-[20px] border border-border">
           {decisions.length === 0
-            ? 'No architecture decisions recorded yet. Click "Record Decision" to document key project decisions!'
+            ? 'No decisions recorded yet. Click "Record Decision" to document key project decisions!'
             : 'No decisions match your search/filter criteria.'}
         </div>
       ) : (
@@ -230,7 +227,7 @@ export function DecisionMemory({
           <div className="bg-app-bg max-w-lg w-full p-6 sm:p-8 rounded-[28px] border border-border shadow-xl relative animate-fade-up">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
               <h3 className="text-base font-medium text-ink flex items-center gap-2">
-                Record Architecture Decision (ADR)
+                Record Decision
               </h3>
               <button
                 onClick={() => setShowModal(false)}

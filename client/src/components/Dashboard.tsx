@@ -246,7 +246,7 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
                     <div className="pt-2.5 mt-2 border-t border-black/10 flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-accent-ink font-medium">
                       <span className="bg-black/10 px-2 py-0.5 rounded-full">{activities.length} events</span>
                       <span className="bg-black/10 px-2 py-0.5 rounded-full">{sessions.length} sessions</span>
-                      <span className="bg-black/10 px-2 py-0.5 rounded-full">{decisions.length} ADRs</span>
+                      <span className="bg-black/10 px-2 py-0.5 rounded-full">{decisions.length} decisions</span>
                     </div>
                   </div>
 

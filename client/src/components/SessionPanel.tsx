@@ -7,9 +7,9 @@ interface SessionPanelProps {
   onUpdateNotes: (notes: string) => void;
 }
 
-function formatDuration(start: string, end: string | null): string {
+function formatDuration(start: string, end: string): string {
   const startDate = new Date(start);
-  const endDate = end ? new Date(end) : new Date();
+  const endDate = new Date(end);
   const diff = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
 
   if (diff < 60) return `${diff}s`;
@@ -35,19 +35,7 @@ function formatDate(dateStr: string): string {
 
 export function SessionPanel({ activeSession, sessions, onUpdateNotes }: SessionPanelProps) {
   const [notes, setNotes] = useState(activeSession?.notes || '');
-  const [elapsed, setElapsed] = useState('0s');
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>(null);
-
-  // Live timer for active session
-  useEffect(() => {
-    if (!activeSession) return;
-    const tick = () => {
-      setElapsed(formatDuration(activeSession.start_time, null));
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [activeSession]);
 
   // Sync notes when active session changes
   useEffect(() => {
@@ -84,12 +72,9 @@ export function SessionPanel({ activeSession, sessions, onUpdateNotes }: Session
       {/* Active Session */}
       {activeSession && (
         <div className="mb-5 p-4 rounded-[20px] bg-surface border border-border">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="status-dot status-dot--active pulse-active" />
-              <span className="text-xs font-semibold text-ink">In Progress</span>
-            </div>
-            <span className="text-base font-mono font-bold text-ink">{elapsed}</span>
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="status-dot status-dot--active pulse-active" />
+            <span className="text-xs font-semibold text-ink">In Progress</span>
           </div>
 
           <div className="text-xs text-muted font-mono mb-3">
@@ -126,7 +111,7 @@ export function SessionPanel({ activeSession, sessions, onUpdateNotes }: Session
                     {session.branch}
                   </span>
                   <span className="text-xs text-muted shrink-0 font-mono">
-                    {formatDuration(session.start_time, session.end_time)}
+                    {session.end_time ? formatDuration(session.start_time, session.end_time) : '—'}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted font-mono">
