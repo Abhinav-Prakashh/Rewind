@@ -1,17 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL;
-const rawKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseUrl =
-  rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
-    ? rawUrl
-    : 'https://vbtjwynvtjyssmzdddhi.supabase.co';
-
-const supabaseKey = rawKey || 'sb_publishable_5JplUNaIezMs8QuMbG6yxw_EeJw-Jry';
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Missing Supabase environment variables");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
