@@ -14,8 +14,6 @@ import { AIMemoryChat } from './AIMemoryChat';
 import { ProjectTimeline } from './ProjectTimeline';
 import { SessionPanel } from './SessionPanel';
 import { SessionModal } from './SessionModal';
-import { SnapshotPicker } from './SnapshotPicker';
-import { repoApi } from '../lib/api';
 import { GitInfo } from './GitInfo';
 import { ActivityTimeline } from './ActivityTimeline';
 import { UserProfileMenu } from './auth/UserProfileMenu';
@@ -348,11 +346,7 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
             {activeTab === 'git' && (
               <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
                 <div className="lg:col-span-7">
-                  {repo.source === 'snapshot' ? <div className="bg-surface p-5 rounded-3xl border border-border space-y-3">
-                    <h3 className="font-semibold">Browser snapshot</h3>
-                    <p className="text-xs text-muted">Last uploaded: {repo.snapshot_at ? new Date(repo.snapshot_at).toLocaleString() : 'Unknown'}. Git branch, commits and live changes are not included.</p>
-                    <SnapshotPicker label="Replace snapshot & index changes" onUpload={async snapshot => { await repoApi.upload(snapshot, repo.id); window.location.reload(); }} />
-                  </div> : <GitInfo status={status} commits={commits} loading={gitLoading} />}
+                  <GitInfo status={status} commits={commits} loading={gitLoading} />
                 </div>
                 <div className="lg:col-span-5">
                   <ActivityTimeline activities={activities} loading={activitiesLoading} />

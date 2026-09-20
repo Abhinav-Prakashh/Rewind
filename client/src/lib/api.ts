@@ -1,40 +1,13 @@
 import { supabase } from './supabase';
 
-const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001/api' : '')).replace(/\/$/, '');
+import { apiRequest, resolveApiBase } from './apiTransport';
 
-/**
- * Returns the current Supabase access token, or null if not authenticated.
- * Used to authenticate requests to the Rewind server.
- */
-async function getAccessToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.DEV);
+export const localWatcherEnabled = import.meta.env.DEV && /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/api$/.test(API_BASE);
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  if (!API_BASE) throw new Error('Set VITE_API_URL to your Render HTTPS API URL and redeploy the frontend.');
-  const token = await getAccessToken();
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options?.headers as Record<string, string> | undefined),
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers,
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${res.status}`);
-  }
-
-  return res.json();
+  const { data } = await supabase.auth.getSession();
+  return apiRequest<T>(API_BASE, url, data.session?.access_token ?? null, options);
 }
 
 // Repository types
