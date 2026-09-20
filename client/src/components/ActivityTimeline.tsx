@@ -77,8 +77,8 @@ function getActivityConfig(type: Activity['type']) {
 
 export function ActivityTimeline({ activities, loading }: ActivityTimelineProps) {
   return (
-    <div className="recall-card animate-fade-up h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+    <div className="recall-card animate-fade-up h-full min-h-0 flex flex-col">
+      <div className="flex items-center justify-between shrink-0 mb-4 pb-3 border-b border-border">
         <h3 className="text-sm font-semibold text-muted uppercase tracking-wider font-mono flex items-center gap-2">
           <svg className="w-4 h-4 text-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
@@ -98,7 +98,7 @@ export function ActivityTimeline({ activities, loading }: ActivityTimelineProps)
           ))}
         </div>
       ) : activities.length > 0 ? (
-        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+        <div className="space-y-2 flex-1 min-h-0 max-h-80 lg:max-h-none overflow-y-auto pr-1">
           {activities.map((item) => {
             const config = getActivityConfig(item.type);
             return (

@@ -119,7 +119,7 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
       {/* Main Canvas - scroll container */}
       <div className="flex-1 flex flex-col min-w-0 h-full md:pl-[84px] overflow-y-auto">
         {/* Inner wrapper: min-h-full makes flex-1 children fill the scroll viewport */}
-        <div className="min-h-full flex flex-col p-4 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full">
+        <div className={`min-h-full flex flex-col p-4 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full ${activeTab === 'activity' || activeTab === 'git' ? 'lg:h-full' : ''}`}>
         
         {/* Header */}
         <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-3.5 shrink-0">
@@ -195,7 +195,7 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
           </div>
 
           {/* Content Area — flex-1 stretches to fill remaining min-h-full space */}
-          <div className="flex-1 flex flex-col space-y-3.5">
+          <div className="flex-1 min-h-0 flex flex-col space-y-3.5">
             {activeTab === 'overview' && (
               <>
                 {/* 3 Asymmetric Modular Cards */}
@@ -329,8 +329,8 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
             )}
 
             {activeTab === 'activity' && (
-              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
-                <div className="lg:col-span-8">
+              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-4">
+                <div className="min-h-0 lg:col-span-8">
                   <ActivityTimeline activities={activities} loading={activitiesLoading} />
                 </div>
                 <div className="lg:col-span-4">
@@ -344,11 +344,11 @@ export function Dashboard({ repo, onDisconnect }: DashboardProps) {
             )}
 
             {activeTab === 'git' && (
-              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-4">
                 <div className="lg:col-span-7">
                   <GitInfo status={status} commits={commits} loading={gitLoading} />
                 </div>
-                <div className="lg:col-span-5">
+                <div className="min-h-0 lg:col-span-5">
                   <ActivityTimeline activities={activities} loading={activitiesLoading} />
                 </div>
               </div>
